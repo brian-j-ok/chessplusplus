@@ -23,6 +23,11 @@ namespace ChessPlusPlus.Core
 		private Vector2I selectedPosition;
 		private ChessPlusPlus.UI.PromotionDialog? promotionDialog;
 
+		// Timer properties
+		private float whiteTimeRemaining = 600.0f; // 10 minutes in seconds
+		private float blackTimeRemaining = 600.0f; // 10 minutes in seconds
+		private bool timersRunning = false;
+
 		[Signal]
 		public delegate void TurnChangedEventHandler(PieceColor newTurn);
 
@@ -31,6 +36,9 @@ namespace ChessPlusPlus.Core
 
 		[Signal]
 		public delegate void PieceSelectedEventHandler(Piece piece);
+
+		[Signal]
+		public delegate void TimerUpdatedEventHandler(float whiteTime, float blackTime);
 
 		public override void _Ready()
 		{
@@ -58,6 +66,11 @@ namespace ChessPlusPlus.Core
 			State = GameState.Setup;
 			CurrentTurn = PieceColor.White;
 
+			// Reset timers
+			whiteTimeRemaining = 600.0f;
+			blackTimeRemaining = 600.0f;
+			timersRunning = true;
+
 			Board.SetupStandardBoard();
 
 			// Refresh board orientation after player has chosen their color
@@ -77,6 +90,7 @@ namespace ChessPlusPlus.Core
 			State = GameState.Playing;
 			EmitSignal(SignalName.GameStateChanged, (int)State);
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);
+			EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
 		}
 
 		public void StartCustomGame(Army whiteArmy, Army blackArmy)
@@ -84,9 +98,48 @@ namespace ChessPlusPlus.Core
 			State = GameState.Setup;
 			CurrentTurn = PieceColor.White;
 
+			// Reset timers
+			whiteTimeRemaining = 600.0f;
+			blackTimeRemaining = 600.0f;
+			timersRunning = true;
+
 			State = GameState.Playing;
 			EmitSignal(SignalName.GameStateChanged, (int)State);
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);
+			EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
+		}
+
+		public override void _Process(double delta)
+		{
+			if (timersRunning && State == GameState.Playing)
+			{
+				// Update the current player's timer
+				if (CurrentTurn == PieceColor.White)
+				{
+					whiteTimeRemaining -= (float)delta;
+					if (whiteTimeRemaining <= 0)
+					{
+						whiteTimeRemaining = 0;
+						timersRunning = false;
+						State = GameState.Draw; // Time out results in loss/draw
+						EmitSignal(SignalName.GameStateChanged, (int)State);
+					}
+				}
+				else
+				{
+					blackTimeRemaining -= (float)delta;
+					if (blackTimeRemaining <= 0)
+					{
+						blackTimeRemaining = 0;
+						timersRunning = false;
+						State = GameState.Draw; // Time out results in loss/draw
+						EmitSignal(SignalName.GameStateChanged, (int)State);
+					}
+				}
+
+				// Emit timer update signal
+				EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
+			}
 		}
 
 		public override void _Input(InputEvent @event)
@@ -121,14 +174,16 @@ namespace ChessPlusPlus.Core
 
 			if (selectedPiece == null)
 			{
-				if (clickedPiece != null && clickedPiece.Color == CurrentTurn && clickedPiece.Color == GameConfig.Instance.PlayerColor)
+				// Allow selecting any piece that belongs to the current turn (both sides playable)
+				if (clickedPiece != null && clickedPiece.Color == CurrentTurn)
 				{
 					SelectPiece(clickedPiece, boardPos);
 				}
 			}
 			else
 			{
-				if (clickedPiece != null && clickedPiece.Color == CurrentTurn && clickedPiece.Color == GameConfig.Instance.PlayerColor)
+				// Allow selecting another piece of the current turn
+				if (clickedPiece != null && clickedPiece.Color == CurrentTurn)
 				{
 					SelectPiece(clickedPiece, boardPos);
 				}
