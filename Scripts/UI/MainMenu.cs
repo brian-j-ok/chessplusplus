@@ -7,8 +7,10 @@ namespace ChessPlusPlus.UI
 	public partial class MainMenu : Control
 	{
 		[Export] public PackedScene GameScene { get; set; } = null!;
+		[Export] public PackedScene ArmyCustomizationScene { get; set; } = null!;
 
 		private Button startButton = null!;
+		private Button customizeArmyButton = null!;
 		private Button playAsWhiteButton = null!;
 		private Button playAsBlackButton = null!;
 		private Label titleLabel = null!;
@@ -88,14 +90,28 @@ namespace ChessPlusPlus.UI
 			spacer2.CustomMinimumSize = new Vector2(0, 30);
 			mainContainer.AddChild(spacer2);
 
+			// Button container for game options
+			var gameButtonsContainer = new VBoxContainer();
+			gameButtonsContainer.Alignment = BoxContainer.AlignmentMode.Center;
+			mainContainer.AddChild(gameButtonsContainer);
+
 			// Start button
 			startButton = new Button();
 			startButton.Name = "StartButton";
-			startButton.Text = "Start Game";
+			startButton.Text = "Start Standard Game";
 			startButton.CustomMinimumSize = new Vector2(200, 50);
 			startButton.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
 			startButton.Disabled = true; // Initially disabled until color is selected
-			mainContainer.AddChild(startButton);
+			gameButtonsContainer.AddChild(startButton);
+
+			// Customize Army button
+			customizeArmyButton = new Button();
+			customizeArmyButton.Name = "CustomizeArmyButton";
+			customizeArmyButton.Text = "Customize Army";
+			customizeArmyButton.CustomMinimumSize = new Vector2(200, 50);
+			customizeArmyButton.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+			customizeArmyButton.Disabled = true; // Initially disabled until color is selected
+			gameButtonsContainer.AddChild(customizeArmyButton);
 		}
 
 		private void ConnectSignals()
@@ -103,6 +119,7 @@ namespace ChessPlusPlus.UI
 			playAsWhiteButton.Pressed += () => OnColorSelected(PieceColor.White);
 			playAsBlackButton.Pressed += () => OnColorSelected(PieceColor.Black);
 			startButton.Pressed += OnStartGame;
+			customizeArmyButton.Pressed += OnCustomizeArmy;
 		}
 
 		private void OnColorSelected(PieceColor color)
@@ -121,8 +138,9 @@ namespace ChessPlusPlus.UI
 				playAsBlackButton.ButtonPressed = true;
 			}
 
-			// Enable start button
+			// Enable buttons
 			startButton.Disabled = false;
+			customizeArmyButton.Disabled = false;
 
 			GD.Print($"Player selected: {color}");
 		}
@@ -130,6 +148,52 @@ namespace ChessPlusPlus.UI
 		private void OnStartGame()
 		{
 			// Load the game scene
+			GameScene = GD.Load<PackedScene>("res://Scenes/game.tscn");
+			if (GameScene != null)
+			{
+				GetTree().ChangeSceneToPacked(GameScene);
+			}
+			else
+			{
+				GD.PrintErr("Failed to load game scene!");
+			}
+		}
+
+		private void OnCustomizeArmy()
+		{
+			// Load the army customization scene
+			ArmyCustomizationScene = GD.Load<PackedScene>("res://Scenes/army_customization.tscn");
+			if (ArmyCustomizationScene != null)
+			{
+				var customizationScene = ArmyCustomizationScene.Instantiate<ChessPlusPlus.UI.ArmyCustomization>();
+				customizationScene.Initialize(GameConfig.Instance.PlayerColor);
+
+				// Connect signals to handle navigation
+				customizationScene.BackToMenu += OnBackToMenuFromCustomization;
+				// Note: StartCustomGame signal is handled directly by ArmyCustomization now
+
+				GetTree().Root.AddChild(customizationScene);
+				QueueFree(); // Remove the main menu
+			}
+			else
+			{
+				GD.PrintErr("Failed to load army customization scene!");
+			}
+		}
+
+		private void OnBackToMenuFromCustomization()
+		{
+			// Return to main menu from army customization
+			var mainMenuScene = GD.Load<PackedScene>("res://Scenes/main_menu.tscn");
+			if (mainMenuScene != null)
+			{
+				GetTree().ChangeSceneToPacked(mainMenuScene);
+			}
+		}
+
+		private void OnStartCustomGame()
+		{
+			// The custom army is already stored in GameConfig by ArmyCustomization
 			GameScene = GD.Load<PackedScene>("res://Scenes/game.tscn");
 			if (GameScene != null)
 			{

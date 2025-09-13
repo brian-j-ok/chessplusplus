@@ -33,8 +33,28 @@ namespace ChessPlusPlus.Core
 			AddChild(boardVisual);
 			MoveChild(boardVisual, 0); // Put visual behind pieces
 
-			whiteArmy = new Army(PieceColor.White);
-			blackArmy = new Army(PieceColor.Black);
+			// Check for custom army from GameConfig
+			if (GameConfig.Instance.HasCustomArmy())
+			{
+				var customArmy = GameConfig.Instance.GetCustomArmy();
+				if (GameConfig.Instance.PlayerColor == PieceColor.White)
+				{
+					whiteArmy = customArmy!;
+					blackArmy = new Army(PieceColor.Black);
+				}
+				else
+				{
+					blackArmy = customArmy!;
+					whiteArmy = new Army(PieceColor.White);
+				}
+				GD.Print($"Using custom army for {GameConfig.Instance.PlayerColor}");
+			}
+			else
+			{
+				whiteArmy = new Army(PieceColor.White);
+				blackArmy = new Army(PieceColor.Black);
+				GD.Print("Using standard armies");
+			}
 		}
 
 		public void SetupStandardBoard()

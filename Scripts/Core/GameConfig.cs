@@ -9,6 +9,8 @@ namespace ChessPlusPlus.Core
 		[Export] public bool FlipBoardForBlack { get; set; } = true;
 		[Export] public string GameMode { get; set; } = "Standard";
 
+		private Army? customPlayerArmy = null;
+
 		public static GameConfig Instance { get; private set; } = new GameConfig();
 
 		public void SetPlayerColor(PieceColor color)
@@ -27,6 +29,28 @@ namespace ChessPlusPlus.Core
 		public bool ShouldFlipBoard()
 		{
 			return FlipBoardForBlack && PlayerColor == PieceColor.White;
+		}
+
+		public void SetCustomArmy(Army army)
+		{
+			customPlayerArmy = army;
+			GameMode = "Custom";
+		}
+
+		public Army? GetCustomArmy()
+		{
+			return customPlayerArmy;
+		}
+
+		public bool HasCustomArmy()
+		{
+			return customPlayerArmy != null;
+		}
+
+		public void ClearCustomArmy()
+		{
+			customPlayerArmy = null;
+			GameMode = "Standard";
 		}
 	}
 }

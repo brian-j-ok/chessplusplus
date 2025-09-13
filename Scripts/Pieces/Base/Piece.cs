@@ -92,11 +92,27 @@ namespace ChessPlusPlus.Pieces
 		{
 			string colorPrefix = Color == PieceColor.White ? "white" : "black";
 			string pieceName = Type.ToString().ToLower();
-			string texturePath = $"res://Resources/Textures/{colorPrefix}_{pieceName}.png";
 
-			if (ResourceLoader.Exists(texturePath))
+			// Try class-specific sprite first (e.g., white_pawn_ranger.png)
+			if (ClassName != "Standard")
 			{
-				sprite.Texture = GD.Load<Texture2D>(texturePath);
+				string classSpecificPath = $"res://Resources/Textures/{colorPrefix}_{pieceName}_{ClassName.ToLower()}.png";
+				if (ResourceLoader.Exists(classSpecificPath))
+				{
+					sprite.Texture = GD.Load<Texture2D>(classSpecificPath);
+					return;
+				}
+			}
+
+			// Fall back to standard sprite (e.g., white_pawn.png)
+			string standardPath = $"res://Resources/Textures/{colorPrefix}_{pieceName}.png";
+			if (ResourceLoader.Exists(standardPath))
+			{
+				sprite.Texture = GD.Load<Texture2D>(standardPath);
+			}
+			else
+			{
+				GD.PrintErr($"No sprite found for {colorPrefix} {pieceName} (class: {ClassName})");
 			}
 		}
 
