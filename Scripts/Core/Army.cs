@@ -1,0 +1,141 @@
+namespace ChessPlusPlus.Core
+{
+	using System;
+	using System.Collections.Generic;
+	using ChessPlusPlus.Pieces;
+	using Godot;
+	public class PieceClassAssignment
+	{
+		public PieceType Type { get; set; }
+		public int Position { get; set; }
+		public string ClassName { get; set; } = string.Empty;
+
+		public PieceClassAssignment(PieceType type, int position, string className = "Standard")
+		{
+			Type = type;
+			Position = position;
+			ClassName = className;
+		}
+	}
+
+	public partial class Army
+	{
+		public PieceColor Color { get; private set; }
+		private Dictionary<(PieceType, int), string> pieceClasses = new();
+
+		public Army(PieceColor color)
+		{
+			Color = color;
+			InitializeStandardArmy();
+		}
+
+		private void InitializeStandardArmy()
+		{
+			for (int i = 0; i < 8; i++)
+			{
+				SetPieceClass(PieceType.Pawn, i, "Standard");
+			}
+
+			SetPieceClass(PieceType.Rook, 0, "Standard");
+			SetPieceClass(PieceType.Knight, 1, "Standard");
+			SetPieceClass(PieceType.Bishop, 2, "Standard");
+			SetPieceClass(PieceType.Queen, 3, "Standard");
+			SetPieceClass(PieceType.King, 4, "Standard");
+			SetPieceClass(PieceType.Bishop, 5, "Standard");
+			SetPieceClass(PieceType.Knight, 6, "Standard");
+			SetPieceClass(PieceType.Rook, 7, "Standard");
+		}
+
+		public void SetPieceClass(PieceType type, int position, string className)
+		{
+			pieceClasses[(type, position)] = className;
+		}
+
+		public string GetPieceClass(PieceType type, int position)
+		{
+			return pieceClasses.TryGetValue((type, position), out string? className)
+				? className
+				: "Standard";
+		}
+
+		public Piece CreatePiece(PieceType type, int position)
+		{
+			string className = GetPieceClass(type, position);
+			Piece piece = CreatePieceByClass(type, className);
+			piece.Color = Color;
+			return piece;
+		}
+
+		private Piece CreatePieceByClass(PieceType type, string className)
+		{
+			return type switch
+			{
+				PieceType.Pawn => CreatePawn(className),
+				PieceType.Knight => CreateKnight(className),
+				PieceType.Bishop => CreateBishop(className),
+				PieceType.Rook => CreateRook(className),
+				PieceType.Queen => CreateQueen(className),
+				PieceType.King => CreateKing(className),
+				_ => throw new ArgumentException($"Unknown piece type: {type}")
+			};
+		}
+
+		private Piece CreatePawn(string className)
+		{
+			return className switch
+			{
+				"Ranger" => new RangerPawn(),
+				"Guard" => new GuardPawn(),
+				_ => new Pawn()
+			};
+		}
+
+		private Piece CreateKnight(string className)
+		{
+			return className switch
+			{
+				"Charge" => new ChargeKnight(),
+				_ => new Knight()
+			};
+		}
+
+		private Piece CreateBishop(string className)
+		{
+			return new Bishop();
+		}
+
+		private Piece CreateRook(string className)
+		{
+			return new Rook();
+		}
+
+		private Piece CreateQueen(string className)
+		{
+			return new Queen();
+		}
+
+		private Piece CreateKing(string className)
+		{
+			return new King();
+		}
+
+		public List<PieceClassAssignment> GetArmyComposition()
+		{
+			var composition = new List<PieceClassAssignment>();
+			foreach (var kvp in pieceClasses)
+			{
+				composition.Add(new PieceClassAssignment(kvp.Key.Item1, kvp.Key.Item2, kvp.Value));
+			}
+			return composition;
+		}
+
+		public void LoadArmyComposition(List<PieceClassAssignment> composition)
+		{
+			pieceClasses.Clear();
+			foreach (var assignment in composition)
+			{
+				SetPieceClass(assignment.Type, assignment.Position, assignment.ClassName);
+			}
+		}
+	}
+}
