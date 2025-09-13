@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using ChessPlusPlus.Core;
 
 namespace ChessPlusPlus.UI
 {
@@ -20,6 +21,22 @@ namespace ChessPlusPlus.UI
 			DrawBoard();
 		}
 
+		public void RefreshBoardOrientation()
+		{
+			// Clear and redraw the board with the new orientation
+			for (int x = 0; x < 8; x++)
+			{
+				for (int y = 0; y < 8; y++)
+				{
+					if (squares[x, y] != null)
+					{
+						squares[x, y].QueueFree();
+					}
+				}
+			}
+			DrawBoard();
+		}
+
 		private void DrawBoard()
 		{
 			for (int x = 0; x < 8; x++)
@@ -29,7 +46,12 @@ namespace ChessPlusPlus.UI
 					var square = new ColorRect();
 					square.Name = $"Square_{x}_{y}";
 					square.Size = new Vector2(SquareSize, SquareSize);
-					square.Position = new Vector2(x * SquareSize, y * SquareSize);
+
+					// Apply board orientation
+					var displayPos = GameConfig.Instance.ShouldFlipBoard() ? FlipPosition(new Vector2I(x, y)) : new Vector2I(x, y);
+					square.Position = new Vector2(displayPos.X * SquareSize, displayPos.Y * SquareSize);
+
+					// Calculate the square color based on the original position, not display position
 					square.Color = (x + y) % 2 == 0 ? LightSquareColor : DarkSquareColor;
 					squares[x, y] = square;
 					AddChild(square);
@@ -44,7 +66,8 @@ namespace ChessPlusPlus.UI
 
 			var highlight = new ColorRect();
 			highlight.Size = new Vector2(SquareSize, SquareSize);
-			highlight.Position = new Vector2(position.X * SquareSize, position.Y * SquareSize);
+			var displayPos = GameConfig.Instance.ShouldFlipBoard() ? FlipPosition(position) : position;
+			highlight.Position = new Vector2(displayPos.X * SquareSize, displayPos.Y * SquareSize);
 			highlight.Color = color;
 			highlights.Add(highlight);
 			AddChild(highlight);
@@ -84,6 +107,10 @@ namespace ChessPlusPlus.UI
 					squares[x, y].Color = (x + y) % 2 == 0 ? LightSquareColor : DarkSquareColor;
 				}
 			}
+		}
+		private Vector2I FlipPosition(Vector2I position)
+		{
+			return new Vector2I(position.X, 7 - position.Y);
 		}
 	}
 }

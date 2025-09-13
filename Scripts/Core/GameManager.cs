@@ -60,6 +60,20 @@ namespace ChessPlusPlus.Core
 
 			Board.SetupStandardBoard();
 
+			// Refresh board orientation after player has chosen their color
+			var boardVisual = Board.GetBoardVisual();
+			if (boardVisual != null)
+			{
+				boardVisual.RefreshBoardOrientation();
+			}
+
+			// If player is playing as black and it's the start of the game,
+			// let the AI make the first move or switch turns
+			if (!GameConfig.Instance.IsPlayerWhite())
+			{
+				GD.Print("Player is playing as Black - White will move first");
+			}
+
 			State = GameState.Playing;
 			EmitSignal(SignalName.GameStateChanged, (int)State);
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);
@@ -93,6 +107,9 @@ namespace ChessPlusPlus.Core
 			}
 		}
 
+		/// <summary>
+		/// Handles player clicks on the chess board for piece selection and movement
+		/// </summary>
 		private void HandleBoardClick(Vector2 clickPosition)
 		{
 			var boardPos = Board.WorldToBoardPosition(Board.ToLocal(clickPosition));
@@ -104,14 +121,14 @@ namespace ChessPlusPlus.Core
 
 			if (selectedPiece == null)
 			{
-				if (clickedPiece != null && clickedPiece.Color == CurrentTurn)
+				if (clickedPiece != null && clickedPiece.Color == CurrentTurn && clickedPiece.Color == GameConfig.Instance.PlayerColor)
 				{
 					SelectPiece(clickedPiece, boardPos);
 				}
 			}
 			else
 			{
-				if (clickedPiece != null && clickedPiece.Color == CurrentTurn)
+				if (clickedPiece != null && clickedPiece.Color == CurrentTurn && clickedPiece.Color == GameConfig.Instance.PlayerColor)
 				{
 					SelectPiece(clickedPiece, boardPos);
 				}
@@ -190,11 +207,17 @@ namespace ChessPlusPlus.Core
 			return Board.IsKingInCheck(color);
 		}
 
+		/// <summary>
+		/// TODO: Implement proper checkmate detection
+		/// </summary>
 		private bool IsCheckmate(PieceColor color)
 		{
 			return false;
 		}
 
+		/// <summary>
+		/// TODO: Implement proper stalemate detection
+		/// </summary>
 		private bool IsStalemate(PieceColor color)
 		{
 			return false;

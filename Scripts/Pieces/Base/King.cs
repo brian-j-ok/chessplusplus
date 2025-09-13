@@ -44,6 +44,9 @@ namespace ChessPlusPlus.Pieces
 			return moves;
 		}
 
+		/// <summary>
+		/// Adds castling moves to the king's possible moves if conditions are met
+		/// </summary>
 		private void AddCastlingMoves(Board board, List<Vector2I> moves)
 		{
 			if (HasMoved)
@@ -51,6 +54,7 @@ namespace ChessPlusPlus.Pieces
 
 			int row = Color == PieceColor.White ? 0 : 7;
 
+			// Check kingside castling
 			var kingRook = board.GetPieceAt(new Vector2I(7, row)) as Rook;
 			if (kingRook != null && !kingRook.HasMoved)
 			{
@@ -69,6 +73,7 @@ namespace ChessPlusPlus.Pieces
 				}
 			}
 
+			// Check queenside castling
 			var queenRook = board.GetPieceAt(new Vector2I(0, row)) as Rook;
 			if (queenRook != null && !queenRook.HasMoved)
 			{

@@ -19,6 +19,9 @@ namespace ChessPlusPlus.Pieces
 		King
 	}
 
+	/// <summary>
+	/// Base class for all chess pieces, handling common functionality like positioning and rendering
+	/// </summary>
 	public abstract partial class Piece : Node2D
 	{
 		[Export] public PieceColor Color { get; set; }
@@ -46,13 +49,16 @@ namespace ChessPlusPlus.Pieces
 			ScaleToFitSquare();
 		}
 
+		/// <summary>
+		/// Scales the piece sprite to fit within the chess square with padding
+		/// </summary>
 		protected virtual void ScaleToFitSquare()
 		{
 			if (sprite.Texture == null)
 				return;
 
 			float squareSize = 64.0f;
-			float padding = 8.0f; // Small padding so pieces don't touch square edges
+			float padding = 8.0f;
 			float targetSize = squareSize - padding;
 
 			var textureSize = sprite.Texture.GetSize();

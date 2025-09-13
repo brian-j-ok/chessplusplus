@@ -4,6 +4,9 @@ namespace ChessPlusPlus.Core
 	using System.Collections.Generic;
 	using ChessPlusPlus.Pieces;
 	using Godot;
+	/// <summary>
+	/// Represents a piece assignment linking position, type, and class variant
+	/// </summary>
 	public class PieceClassAssignment
 	{
 		public PieceType Type { get; set; }
@@ -18,6 +21,9 @@ namespace ChessPlusPlus.Core
 		}
 	}
 
+	/// <summary>
+	/// Manages piece creation and army composition for one side of the chess board
+	/// </summary>
 	public partial class Army
 	{
 		public PieceColor Color { get; private set; }
@@ -58,6 +64,9 @@ namespace ChessPlusPlus.Core
 				: "Standard";
 		}
 
+		/// <summary>
+		/// Creates a piece instance based on type, position, and assigned class variant
+		/// </summary>
 		public Piece CreatePiece(PieceType type, int position)
 		{
 			string className = GetPieceClass(type, position);

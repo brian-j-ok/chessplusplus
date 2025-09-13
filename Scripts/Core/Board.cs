@@ -73,16 +73,17 @@ namespace ChessPlusPlus.Core
 			AddChild(piece);
 
 			piece.Position = BoardToWorldPosition(position);
-			GD.Print($"Placed {piece.Color} {piece.Type} at board position {position}, world position {piece.Position}");
 		}
 
+		/// <summary>
+		/// Attempts to move a piece from one position to another, validating legality and handling special moves
+		/// </summary>
 		public bool MovePiece(Vector2I from, Vector2I to)
 		{
 			var piece = GetPieceAt(from);
 			if (piece == null || !piece.CanMoveTo(to, this))
 				return false;
 
-			// Check if this move would leave the king in check
 			if (!IsMoveLegal(from, to, piece.Color))
 				return false;
 
@@ -102,7 +103,6 @@ namespace ChessPlusPlus.Core
 			pieces[from.X, from.Y] = null;
 			pieces[to.X, to.Y] = piece;
 
-			// Handle castling
 			if (piece is King king && king.IsCastlingMove(to))
 			{
 				HandleCastling(king, from, to);
@@ -113,7 +113,6 @@ namespace ChessPlusPlus.Core
 
 			EmitSignal(SignalName.PieceMoved, piece, from, to);
 
-			// Check for pawn promotion
 			if (piece is Pawn pawn && pawn.CanBePromoted())
 			{
 				EmitSignal(SignalName.PawnPromotion, pawn, to);
@@ -152,19 +151,24 @@ namespace ChessPlusPlus.Core
 			return position.X >= 0 && position.X < 8 && position.Y >= 0 && position.Y < 8;
 		}
 
+		/// <summary>
+		/// Converts board coordinates to world pixel coordinates, accounting for board orientation
+		/// </summary>
 		public Vector2 BoardToWorldPosition(Vector2I boardPos)
 		{
 			const float squareSize = 64.0f;
-			return new Vector2(boardPos.X * squareSize, boardPos.Y * squareSize);
+			var displayPos = GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(boardPos) : boardPos;
+			return new Vector2(displayPos.X * squareSize, displayPos.Y * squareSize);
 		}
 
 		public Vector2I WorldToBoardPosition(Vector2 worldPos)
 		{
 			const float squareSize = 64.0f;
-			return new Vector2I(
+			var displayPos = new Vector2I(
 				Mathf.FloorToInt(worldPos.X / squareSize),
 				Mathf.FloorToInt(worldPos.Y / squareSize)
 			);
+			return GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(displayPos) : displayPos;
 		}
 
 		public Army GetArmy(PieceColor color)
@@ -220,6 +224,9 @@ namespace ChessPlusPlus.Core
 			PlacePiece(newPiece, position);
 		}
 
+		/// <summary>
+		/// Handles the special rook movement during castling
+		/// </summary>
 		private void HandleCastling(King king, Vector2I from, Vector2I to)
 		{
 			bool isKingsideCastle = to.X > from.X;
@@ -227,7 +234,6 @@ namespace ChessPlusPlus.Core
 			int rookToX = isKingsideCastle ? 5 : 3;
 			int row = from.Y;
 
-			// Move the rook
 			var rook = GetPieceAt(new Vector2I(rookFromX, row));
 			if (rook != null)
 			{
@@ -239,22 +245,21 @@ namespace ChessPlusPlus.Core
 			}
 		}
 
+		/// <summary>
+		/// Simulates a move to ensure it doesn't leave the player's king in check
+		/// </summary>
 		private bool IsMoveLegal(Vector2I from, Vector2I to, PieceColor movingPieceColor)
 		{
-			// Simulate the move to check if it leaves the king in check
 			var movingPiece = GetPieceAt(from);
 			var capturedPiece = GetPieceAt(to);
 
-			// Temporarily make the move
 			pieces[from.X, from.Y] = null;
 			pieces[to.X, to.Y] = movingPiece;
 			if (movingPiece != null)
 				movingPiece.BoardPosition = to;
 
-			// Check if the king of the moving color is in check after this move
 			bool wouldBeInCheck = IsKingInCheck(movingPieceColor);
 
-			// Restore the original position
 			pieces[from.X, from.Y] = movingPiece;
 			pieces[to.X, to.Y] = capturedPiece;
 			if (movingPiece != null)
@@ -263,9 +268,11 @@ namespace ChessPlusPlus.Core
 			return !wouldBeInCheck;
 		}
 
+		/// <summary>
+		/// Determines if the specified color's king is currently under attack
+		/// </summary>
 		public bool IsKingInCheck(PieceColor kingColor)
 		{
-			// Find the king of the given color
 			King? king = null;
 			for (int x = 0; x < 8; x++)
 			{
@@ -285,7 +292,6 @@ namespace ChessPlusPlus.Core
 			if (king == null)
 				return false;
 
-			// Check if any enemy piece can attack the king
 			for (int x = 0; x < 8; x++)
 			{
 				for (int y = 0; y < 8; y++)
@@ -303,6 +309,18 @@ namespace ChessPlusPlus.Core
 			}
 
 			return false;
+		}
+		/// <summary>
+		/// Flips board position vertically for when player chooses to play as white
+		/// </summary>
+		private Vector2I FlipBoardPosition(Vector2I position)
+		{
+			return new Vector2I(position.X, 7 - position.Y);
+		}
+
+		public Vector2I GetDisplayPosition(Vector2I boardPos)
+		{
+			return GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(boardPos) : boardPos;
 		}
 	}
 }
