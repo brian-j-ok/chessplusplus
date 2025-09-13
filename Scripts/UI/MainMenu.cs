@@ -24,30 +24,29 @@ namespace ChessPlusPlus.UI
 
 		private void SetupUI()
 		{
+			// Create a centering container that fills the screen
+			var centerContainer = new CenterContainer();
+			centerContainer.Name = "CenterContainer";
+			centerContainer.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+			AddChild(centerContainer);
+
 			// Set up main container
 			var mainContainer = new VBoxContainer();
 			mainContainer.Name = "MainContainer";
-			mainContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-			mainContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-			mainContainer.AnchorLeft = 0.5f;
-			mainContainer.AnchorTop = 0.5f;
-			mainContainer.AnchorRight = 0.5f;
-			mainContainer.AnchorBottom = 0.5f;
-			mainContainer.Position = new Vector2(-200, -150);
-			mainContainer.Size = new Vector2(400, 300);
-			AddChild(mainContainer);
+			centerContainer.AddChild(mainContainer);
 
 			// Title
 			titleLabel = new Label();
 			titleLabel.Name = "TitleLabel";
 			titleLabel.Text = "Chess++";
 			titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
-			titleLabel.AddThemeStyleboxOverride("normal", new StyleBoxFlat());
+			titleLabel.AddThemeFontSizeOverride("font_size", 48);
+			titleLabel.AddThemeColorOverride("font_color", Colors.White);
 			mainContainer.AddChild(titleLabel);
 
 			// Spacer
 			var spacer1 = new Control();
-			spacer1.CustomMinimumSize = new Vector2(0, 30);
+			spacer1.CustomMinimumSize = new Vector2(0, 40);
 			mainContainer.AddChild(spacer1);
 
 			// Configuration container
@@ -70,7 +69,9 @@ namespace ChessPlusPlus.UI
 			playAsWhiteButton = new Button();
 			playAsWhiteButton.Name = "PlayAsWhiteButton";
 			playAsWhiteButton.Text = "Play as White";
-			playAsWhiteButton.CustomMinimumSize = new Vector2(150, 40);
+			playAsWhiteButton.CustomMinimumSize = new Vector2(160, 45);
+			playAsWhiteButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			playAsWhiteButton.ToggleMode = true;
 			colorButtonsContainer.AddChild(playAsWhiteButton);
 
 			// Spacer between buttons
@@ -82,7 +83,9 @@ namespace ChessPlusPlus.UI
 			playAsBlackButton = new Button();
 			playAsBlackButton.Name = "PlayAsBlackButton";
 			playAsBlackButton.Text = "Play as Black";
-			playAsBlackButton.CustomMinimumSize = new Vector2(150, 40);
+			playAsBlackButton.CustomMinimumSize = new Vector2(160, 45);
+			playAsBlackButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			playAsBlackButton.ToggleMode = true;
 			colorButtonsContainer.AddChild(playAsBlackButton);
 
 			// Spacer
@@ -99,17 +102,24 @@ namespace ChessPlusPlus.UI
 			startButton = new Button();
 			startButton.Name = "StartButton";
 			startButton.Text = "Start Standard Game";
-			startButton.CustomMinimumSize = new Vector2(200, 50);
+			startButton.CustomMinimumSize = new Vector2(240, 55);
 			startButton.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+			startButton.AddThemeFontSizeOverride("font_size", 16);
 			startButton.Disabled = true; // Initially disabled until color is selected
 			gameButtonsContainer.AddChild(startButton);
+
+			// Small spacer between game buttons
+			var gameButtonSpacer = new Control();
+			gameButtonSpacer.CustomMinimumSize = new Vector2(0, 15);
+			gameButtonsContainer.AddChild(gameButtonSpacer);
 
 			// Customize Army button
 			customizeArmyButton = new Button();
 			customizeArmyButton.Name = "CustomizeArmyButton";
 			customizeArmyButton.Text = "Customize Army";
-			customizeArmyButton.CustomMinimumSize = new Vector2(200, 50);
+			customizeArmyButton.CustomMinimumSize = new Vector2(240, 55);
 			customizeArmyButton.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+			customizeArmyButton.AddThemeFontSizeOverride("font_size", 16);
 			customizeArmyButton.Disabled = true; // Initially disabled until color is selected
 			gameButtonsContainer.AddChild(customizeArmyButton);
 		}

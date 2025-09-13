@@ -25,6 +25,22 @@ namespace ChessPlusPlus.Core
 			InitializeBoard();
 		}
 
+		public void UpdatePiecePositions()
+		{
+			// Update all piece positions when board size changes
+			for (int x = 0; x < 8; x++)
+			{
+				for (int y = 0; y < 8; y++)
+				{
+					var piece = pieces[x, y];
+					if (piece != null)
+					{
+						piece.Position = BoardToWorldPosition(new Vector2I(x, y));
+					}
+				}
+			}
+		}
+
 		private void InitializeBoard()
 		{
 			// Create board visual
@@ -176,17 +192,29 @@ namespace ChessPlusPlus.Core
 		/// </summary>
 		public Vector2 BoardToWorldPosition(Vector2I boardPos)
 		{
-			const float squareSize = 64.0f;
+			if (boardVisual == null)
+				return new Vector2(boardPos.X * 64.0f, boardPos.Y * 64.0f);
+
+			float squareSize = boardVisual.SquareSize;
 			var displayPos = GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(boardPos) : boardPos;
-			return new Vector2(displayPos.X * squareSize, displayPos.Y * squareSize);
+
+			// Add the BoardVisual's position offset since it's now centered in the viewport
+			return boardVisual.Position + new Vector2(displayPos.X * squareSize, displayPos.Y * squareSize);
 		}
 
 		public Vector2I WorldToBoardPosition(Vector2 worldPos)
 		{
-			const float squareSize = 64.0f;
+			if (boardVisual == null)
+				return Vector2I.Zero;
+
+			float squareSize = boardVisual.SquareSize;
+
+			// Subtract the BoardVisual's position offset
+			var relativePos = worldPos - boardVisual.Position;
+
 			var displayPos = new Vector2I(
-				Mathf.FloorToInt(worldPos.X / squareSize),
-				Mathf.FloorToInt(worldPos.Y / squareSize)
+				Mathf.FloorToInt(relativePos.X / squareSize),
+				Mathf.FloorToInt(relativePos.Y / squareSize)
 			);
 			return GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(displayPos) : displayPos;
 		}

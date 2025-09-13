@@ -8,10 +8,13 @@ namespace ChessPlusPlus.UI
 {
 	public partial class ArmyCustomization : Control
 	{
-		[Export] public float SquareSize { get; set; } = 64.0f;
+		[Export] public float MinSquareSize { get; set; } = 40.0f;
+		[Export] public float MaxSquareSize { get; set; } = 100.0f;
 		[Export] public Color LightSquareColor = new Color(0.9f, 0.9f, 0.8f);
 		[Export] public Color DarkSquareColor = new Color(0.4f, 0.3f, 0.2f);
 		[Export] public Color SelectedSquareColor = new Color(1.0f, 1.0f, 0.3f, 0.7f);
+
+		public float SquareSize { get; private set; } = 64.0f;
 
 		private PieceColor playerColor = PieceColor.White;
 		private Army customArmy = null!;
@@ -37,7 +40,42 @@ namespace ChessPlusPlus.UI
 		public override void _Ready()
 		{
 			PieceRegistry.Initialize();
+			CalculateSquareSize();
 			SetupUI();
+			GetViewport().SizeChanged += OnViewportSizeChanged;
+		}
+
+		private void OnViewportSizeChanged()
+		{
+			CalculateSquareSize();
+			RefreshDisplay();
+			UpdatePieceScaling();
+		}
+
+		private void UpdatePieceScaling()
+		{
+			// Scale all pieces to match the new square size
+			foreach (var piece in pieceNodes.Values)
+			{
+				if (piece is ChessPlusPlus.Pieces.Piece chessPiece)
+				{
+					chessPiece.ScaleToFitSquare(SquareSize);
+				}
+			}
+		}
+
+		private void CalculateSquareSize()
+		{
+			var viewportSize = GetViewport().GetVisibleRect().Size;
+
+			// Reserve space for the selection panel (roughly 40% of width)
+			float availableWidth = viewportSize.X * 0.4f;
+			float availableHeight = viewportSize.Y * 0.8f; // Account for title and buttons
+
+			// Use smaller dimension, accounting for 2 rows of pieces
+			float availableSpace = Mathf.Min(availableWidth / 8.0f, availableHeight / 2.0f);
+
+			SquareSize = Mathf.Clamp(availableSpace, MinSquareSize, MaxSquareSize);
 		}
 
 		public void Initialize(PieceColor color)
@@ -165,7 +203,8 @@ namespace ChessPlusPlus.UI
 
 			// Right side - Selection panel with better styling
 			selectionPanel = new Panel();
-			selectionPanel.CustomMinimumSize = new Vector2(450, 0);
+			selectionPanel.CustomMinimumSize = new Vector2(320, 0);
+			selectionPanel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 			selectionPanel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
 			selectionPanel.Visible = false;
 			var selectionStyle = new StyleBoxFlat();
@@ -187,8 +226,8 @@ namespace ChessPlusPlus.UI
 			selectionMargin.AnchorTop = 0;
 			selectionMargin.AnchorRight = 1;
 			selectionMargin.AnchorBottom = 1;
-			selectionMargin.AddThemeConstantOverride("margin_left", 15);
-			selectionMargin.AddThemeConstantOverride("margin_right", 15);
+			selectionMargin.AddThemeConstantOverride("margin_left", 8);
+			selectionMargin.AddThemeConstantOverride("margin_right", 8);
 			selectionMargin.AddThemeConstantOverride("margin_top", 15);
 			selectionMargin.AddThemeConstantOverride("margin_bottom", 15);
 			selectionPanel.AddChild(selectionMargin);
@@ -205,10 +244,12 @@ namespace ChessPlusPlus.UI
 
 			// Scrollable area for class options
 			var scrollContainer = new ScrollContainer();
+			scrollContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 			scrollContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
 			selectionContainer.AddChild(scrollContainer);
 
 			classSelectionContainer = new VBoxContainer();
+			classSelectionContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 			classSelectionContainer.AddThemeConstantOverride("separation", 8);
 			scrollContainer.AddChild(classSelectionContainer);
 
@@ -399,6 +440,7 @@ namespace ChessPlusPlus.UI
 				var optionPanel = new Panel();
 				optionPanel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 				optionPanel.CustomMinimumSize = new Vector2(0, 80); // Give more vertical space
+				optionPanel.ClipContents = true; // Ensure content is clipped to panel bounds
 				var optionStyle = new StyleBoxFlat();
 				optionStyle.BgColor = new Color(0.3f, 0.3f, 0.35f);
 				optionStyle.BorderWidthLeft = 1;
@@ -413,9 +455,9 @@ namespace ChessPlusPlus.UI
 				optionPanel.AddThemeStyleboxOverride("panel", optionStyle);
 
 				var optionMargin = new MarginContainer();
-				optionMargin.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-				optionMargin.AddThemeConstantOverride("margin_left", 15);
-				optionMargin.AddThemeConstantOverride("margin_right", 15);
+				optionMargin.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+				optionMargin.AddThemeConstantOverride("margin_left", 8);
+				optionMargin.AddThemeConstantOverride("margin_right", 8);
 				optionMargin.AddThemeConstantOverride("margin_top", 12);
 				optionMargin.AddThemeConstantOverride("margin_bottom", 12);
 				optionPanel.AddChild(optionMargin);
@@ -423,6 +465,7 @@ namespace ChessPlusPlus.UI
 				// Use HBoxContainer to place button and text side by side for better space usage
 				var mainContainer = new VBoxContainer();
 				mainContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+				mainContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
 				mainContainer.AddThemeConstantOverride("separation", 8);
 				optionMargin.AddChild(mainContainer);
 
@@ -433,7 +476,7 @@ namespace ChessPlusPlus.UI
 
 				var classButton = new Button();
 				classButton.Text = classInfo.DisplayName;
-				classButton.CustomMinimumSize = new Vector2(100, 40);
+				classButton.CustomMinimumSize = new Vector2(80, 40);
 				classButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 
 				// Style the button based on selection
@@ -477,17 +520,21 @@ namespace ChessPlusPlus.UI
 				classButton.Pressed += () => OnClassSelected(classInfo.ClassName);
 				buttonContainer.AddChild(classButton);
 
-				// Add description with much better formatting
-				var descLabel = new Label();
+				// Add description with proper text containment
+				var descLabel = new RichTextLabel();
 				descLabel.Text = classInfo.Description;
+				descLabel.FitContent = false;
+				descLabel.ScrollActive = false;
+				descLabel.BbcodeEnabled = false;
 				descLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-				descLabel.AddThemeFontSizeOverride("font_size", 13);
+				descLabel.AddThemeFontSizeOverride("normal_font_size", 13);
 				descLabel.Modulate = new Color(0.9f, 0.9f, 0.9f);
 				descLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 				descLabel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-				descLabel.VerticalAlignment = VerticalAlignment.Top;
+				descLabel.CustomMinimumSize = new Vector2(0, 20);
 				// Add more line height for better readability
-				descLabel.AddThemeConstantOverride("line_spacing", 2);
+				descLabel.AddThemeConstantOverride("line_separation", 2);
+
 				mainContainer.AddChild(descLabel);
 
 				classSelectionContainer.AddChild(optionPanel);
@@ -544,13 +591,19 @@ namespace ChessPlusPlus.UI
 					var piece = customArmy.CreatePiece(pieceType.Value, positionIndex);
 					piece.BoardPosition = pos;
 
-					// Use the same display position as the squares
+					// Position piece at top-left of square, ScaleToFitSquare will center the sprite
 					var displayY = pos.Y == (playerColor == PieceColor.White ? 6 : 1) ? 0 : 1;
-					var displayPos = new Vector2(pos.X * SquareSize, displayY * SquareSize);
-					piece.Position = displayPos;
+					var squareTopLeft = new Vector2(pos.X * SquareSize, displayY * SquareSize);
+					piece.Position = squareTopLeft;
 
 					pieceNodes[pos] = piece;
 					boardContainer.AddChild(piece);
+
+					// Scale piece to fit the current square size
+					if (piece is ChessPlusPlus.Pieces.Piece chessPiece)
+					{
+						chessPiece.ScaleToFitSquare(SquareSize);
+					}
 				}
 			}
 		}

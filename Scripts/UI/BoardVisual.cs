@@ -11,14 +11,63 @@ namespace ChessPlusPlus.UI
 		[Export] public Color SelectedSquareColor = new Color(1.0f, 1.0f, 0.3f, 0.7f);
 		[Export] public Color ValidMoveColor = new Color(0.3f, 1.0f, 0.3f, 0.5f);
 		[Export] public Color CaptureColor = new Color(1.0f, 0.3f, 0.3f, 0.7f);
-		[Export] public float SquareSize = 64.0f;
+		[Export] public float MinSquareSize = 40.0f;
+		[Export] public float MaxSquareSize = 120.0f;
+		[Export] public float BoardPadding = 40.0f;
+
+		public float SquareSize { get; private set; } = 64.0f;
 
 		private ColorRect[,] squares = new ColorRect[8, 8];
 		private List<ColorRect> highlights = new List<ColorRect>();
 
 		public override void _Ready()
 		{
+			AddToGroup("board_visual");
+			CalculateSquareSize();
 			DrawBoard();
+			GetViewport().SizeChanged += OnViewportSizeChanged;
+		}
+
+		private void OnViewportSizeChanged()
+		{
+			CalculateSquareSize();
+			RefreshBoardOrientation();
+			UpdatePieceScaling();
+		}
+
+		private void UpdatePieceScaling()
+		{
+			// Update all piece sprites to match new square size
+			GetTree().CallGroup("chess_pieces", "ScaleToFitSquare");
+
+			// Update piece positions to match new square positions
+			var board = GetParent<ChessPlusPlus.Core.Board>();
+			board?.UpdatePiecePositions();
+		}
+
+		private void CalculateSquareSize()
+		{
+			var viewportSize = GetViewport().GetVisibleRect().Size;
+
+			// Calculate available space for the board (accounting for UI and padding)
+			float availableWidth = viewportSize.X - BoardPadding * 2;
+			float availableHeight = viewportSize.Y - BoardPadding * 2;
+
+			// Use the smaller dimension to ensure the board fits
+			float availableSpace = Mathf.Min(availableWidth, availableHeight);
+
+			// Calculate square size (board is 8x8)
+			float calculatedSize = availableSpace / 8.0f;
+
+			// Clamp to min/max values
+			SquareSize = Mathf.Clamp(calculatedSize, MinSquareSize, MaxSquareSize);
+
+			// Center the board in the viewport
+			float boardSize = SquareSize * 8;
+			Position = new Vector2(
+				(viewportSize.X - boardSize) * 0.5f,
+				(viewportSize.Y - boardSize) * 0.5f
+			);
 		}
 
 		public void RefreshBoardOrientation()

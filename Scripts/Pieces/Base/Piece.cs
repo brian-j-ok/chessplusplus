@@ -35,10 +35,10 @@ namespace ChessPlusPlus.Pieces
 
 		public override void _Ready()
 		{
+			AddToGroup("chess_pieces");
 			sprite = new Sprite2D();
 			sprite.Name = "Sprite2D";
 			sprite.Centered = true;
-			sprite.Position = new Vector2(32, 32); // Center in 64x64 square
 			AddChild(sprite);
 			InitializePiece();
 		}
@@ -52,13 +52,17 @@ namespace ChessPlusPlus.Pieces
 		/// <summary>
 		/// Scales the piece sprite to fit within the chess square with padding
 		/// </summary>
-		protected virtual void ScaleToFitSquare()
+		public virtual void ScaleToFitSquare()
+		{
+			ScaleToFitSquare(GetDynamicSquareSize());
+		}
+
+		public virtual void ScaleToFitSquare(float squareSize)
 		{
 			if (sprite.Texture == null)
 				return;
 
-			float squareSize = 64.0f;
-			float padding = 8.0f;
+			float padding = squareSize * 0.1f; // 10% padding scales with square size
 			float targetSize = squareSize - padding;
 
 			var textureSize = sprite.Texture.GetSize();
@@ -67,6 +71,16 @@ namespace ChessPlusPlus.Pieces
 			float scale = Mathf.Min(scaleX, scaleY);
 
 			sprite.Scale = new Vector2(scale, scale);
+
+			// Center the sprite in the square (since sprite.Centered = true, position is the center point)
+			sprite.Position = new Vector2(squareSize * 0.5f, squareSize * 0.5f);
+		}
+
+		private float GetDynamicSquareSize()
+		{
+			// Try to find BoardVisual to get current square size
+			var boardVisual = GetTree().GetFirstNodeInGroup("board_visual") as ChessPlusPlus.UI.BoardVisual;
+			return boardVisual?.SquareSize ?? 64.0f; // Fallback to 64 if not found
 		}
 
 		public abstract List<Vector2I> GetPossibleMoves(Board board);
