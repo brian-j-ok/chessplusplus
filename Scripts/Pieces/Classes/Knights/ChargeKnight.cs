@@ -1,6 +1,6 @@
-using Godot;
 using System.Collections.Generic;
 using ChessPlusPlus.Core;
+using Godot;
 
 namespace ChessPlusPlus.Pieces
 {
@@ -10,12 +10,15 @@ namespace ChessPlusPlus.Pieces
 		private Vector2I[] chargeDirections = new Vector2I[]
 		{
 			// Horizontal and vertical charges
-			new Vector2I(3, 0), new Vector2I(-3, 0),  // Left/Right
-			new Vector2I(0, 3), new Vector2I(0, -3),  // Up/Down
-
+			new Vector2I(3, 0),
+			new Vector2I(-3, 0), // Left/Right
+			new Vector2I(0, 3),
+			new Vector2I(0, -3), // Up/Down
 			// Diagonal charges
-			new Vector2I(3, 3), new Vector2I(-3, -3),   // Main diagonal
-			new Vector2I(3, -3), new Vector2I(-3, 3),   // Anti-diagonal
+			new Vector2I(3, 3),
+			new Vector2I(-3, -3), // Main diagonal
+			new Vector2I(3, -3),
+			new Vector2I(-3, 3), // Anti-diagonal
 		};
 
 		public ChargeKnight()

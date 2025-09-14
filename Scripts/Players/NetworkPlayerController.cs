@@ -1,14 +1,15 @@
 namespace ChessPlusPlus.Players
 {
+	using System.Threading.Tasks;
 	using ChessPlusPlus.Core;
 	using ChessPlusPlus.Network;
 	using ChessPlusPlus.Pieces;
 	using Godot;
-	using System.Threading.Tasks;
 
 	public partial class NetworkPlayerController : PlayerController
 	{
-		[Export] public bool IsLocalPlayer { get; set; } = false;
+		[Export]
+		public bool IsLocalPlayer { get; set; } = false;
 
 		private TaskCompletionSource<Move?>? currentMoveTask;
 		private NetworkManager? networkManager;
@@ -131,7 +132,6 @@ namespace ChessPlusPlus.Players
 			GD.Print($"Received opponent's move: {from} to {to}");
 			currentMoveTask.SetResult(move);
 		}
-
 
 		public override void OnTurnStarted()
 		{

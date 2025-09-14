@@ -15,7 +15,13 @@ namespace ChessPlusPlus.Core
 		public Type ClassType { get; set; } = null!;
 		public PieceType PieceType { get; set; }
 
-		public PieceClassInfo(string className, string displayName, string description, Type classType, PieceType pieceType)
+		public PieceClassInfo(
+			string className,
+			string displayName,
+			string description,
+			Type classType,
+			PieceType pieceType
+		)
 		{
 			ClassName = className;
 			DisplayName = displayName;
@@ -39,8 +45,7 @@ namespace ChessPlusPlus.Core
 
 			// Get all types in the current assembly
 			var assembly = Assembly.GetExecutingAssembly();
-			var pieceTypes = assembly.GetTypes()
-				.Where(t => t.IsSubclassOf(typeof(Piece)) && !t.IsAbstract);
+			var pieceTypes = assembly.GetTypes().Where(t => t.IsSubclassOf(typeof(Piece)) && !t.IsAbstract);
 
 			foreach (var type in pieceTypes)
 			{
@@ -93,9 +98,7 @@ namespace ChessPlusPlus.Core
 
 		public static List<string> GetAvailableClassNames(PieceType pieceType)
 		{
-			return GetAvailableClasses(pieceType)
-				.Select(info => info.ClassName)
-				.ToList();
+			return GetAvailableClasses(pieceType).Select(info => info.ClassName).ToList();
 		}
 
 		public static PieceClassInfo? GetClassInfo(PieceType pieceType, string className)
@@ -131,10 +134,11 @@ namespace ChessPlusPlus.Core
 			return className switch
 			{
 				"Standard" => $"Standard {pieceType.ToString().ToLower()} with traditional movement",
-				"Ranger" when pieceType == PieceType.Pawn => "Can move 2 squares forward at any time and capture backwards",
+				"Ranger" when pieceType == PieceType.Pawn =>
+					"Can move 2 squares forward at any time and capture backwards",
 				"Guard" when pieceType == PieceType.Pawn => "Enhanced defensive capabilities",
 				"Charge" when pieceType == PieceType.Knight => "Aggressive knight variant with special charge ability",
-				_ => $"{className} variant of {pieceType.ToString().ToLower()}"
+				_ => $"{className} variant of {pieceType.ToString().ToLower()}",
 			};
 		}
 	}

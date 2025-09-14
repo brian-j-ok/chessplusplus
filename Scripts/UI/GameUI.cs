@@ -1,6 +1,6 @@
-using Godot;
 using ChessPlusPlus.Core;
 using ChessPlusPlus.Pieces;
+using Godot;
 
 namespace ChessPlusPlus.UI
 {

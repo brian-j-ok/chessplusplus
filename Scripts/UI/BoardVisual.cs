@@ -1,19 +1,34 @@
-using Godot;
 using System.Collections.Generic;
 using ChessPlusPlus.Core;
+using Godot;
 
 namespace ChessPlusPlus.UI
 {
 	public partial class BoardVisual : Node2D
 	{
-		[Export] public Color LightSquareColor = new Color(0.9f, 0.9f, 0.8f);
-		[Export] public Color DarkSquareColor = new Color(0.4f, 0.3f, 0.2f);
-		[Export] public Color SelectedSquareColor = new Color(1.0f, 1.0f, 0.3f, 0.7f);
-		[Export] public Color ValidMoveColor = new Color(0.3f, 1.0f, 0.3f, 0.5f);
-		[Export] public Color CaptureColor = new Color(1.0f, 0.3f, 0.3f, 0.7f);
-		[Export] public float MinSquareSize = 40.0f;
-		[Export] public float MaxSquareSize = 120.0f;
-		[Export] public float BoardPadding = 40.0f;
+		[Export]
+		public Color LightSquareColor = new Color(0.9f, 0.9f, 0.8f);
+
+		[Export]
+		public Color DarkSquareColor = new Color(0.4f, 0.3f, 0.2f);
+
+		[Export]
+		public Color SelectedSquareColor = new Color(1.0f, 1.0f, 0.3f, 0.7f);
+
+		[Export]
+		public Color ValidMoveColor = new Color(0.3f, 1.0f, 0.3f, 0.5f);
+
+		[Export]
+		public Color CaptureColor = new Color(1.0f, 0.3f, 0.3f, 0.7f);
+
+		[Export]
+		public float MinSquareSize = 40.0f;
+
+		[Export]
+		public float MaxSquareSize = 120.0f;
+
+		[Export]
+		public float BoardPadding = 40.0f;
 
 		public float SquareSize { get; private set; } = 64.0f;
 
@@ -64,10 +79,7 @@ namespace ChessPlusPlus.UI
 
 			// Center the board in the viewport
 			float boardSize = SquareSize * 8;
-			Position = new Vector2(
-				(viewportSize.X - boardSize) * 0.5f,
-				(viewportSize.Y - boardSize) * 0.5f
-			);
+			Position = new Vector2((viewportSize.X - boardSize) * 0.5f, (viewportSize.Y - boardSize) * 0.5f);
 		}
 
 		public void RefreshBoardOrientation()
@@ -97,7 +109,9 @@ namespace ChessPlusPlus.UI
 					square.Size = new Vector2(SquareSize, SquareSize);
 
 					// Apply board orientation
-					var displayPos = GameConfig.Instance.ShouldFlipBoard() ? FlipPosition(new Vector2I(x, y)) : new Vector2I(x, y);
+					var displayPos = GameConfig.Instance.ShouldFlipBoard()
+						? FlipPosition(new Vector2I(x, y))
+						: new Vector2I(x, y);
 					square.Position = new Vector2(displayPos.X * SquareSize, displayPos.Y * SquareSize);
 
 					// Calculate the square color based on the original position, not display position
@@ -157,6 +171,7 @@ namespace ChessPlusPlus.UI
 				}
 			}
 		}
+
 		private Vector2I FlipPosition(Vector2I position)
 		{
 			return new Vector2I(position.X, 7 - position.Y);

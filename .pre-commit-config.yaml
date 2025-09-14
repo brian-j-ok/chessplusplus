@@ -1,0 +1,73 @@
+# Pre-commit hooks for Godot C# project
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.godot/
+      - id: end-of-file-fixer
+        exclude: \.godot/
+      - id: check-yaml
+      - id: check-json
+      - id: check-xml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # C# formatting with CSharpier
+  - repo: local
+    hooks:
+      - id: csharpier
+        name: CSharpier
+        entry: dotnet csharpier
+        language: system
+        files: '\.cs$'
+        exclude: '(\.godot/|\.Generated\.cs$)'
+        pass_filenames: true
+        require_serial: true
+
+  # C# code analysis
+  - repo: local
+    hooks:
+      - id: dotnet-format
+        name: dotnet format
+        entry: dotnet format style --include
+        language: system
+        files: '\.cs$'
+        exclude: '(\.godot/|\.Generated\.cs$)'
+        pass_filenames: true
+        require_serial: true
+
+  # Build check (ensures code compiles)
+  - repo: local
+    hooks:
+      - id: dotnet-build
+        name: dotnet build
+        entry: dotnet build --no-incremental
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # Security scanning
+  - repo: local
+    hooks:
+      - id: security-scan
+        name: Security Code Scan
+        entry: dotnet list package --vulnerable --include-transitive
+        language: system
+        pass_filenames: false
+        always_run: true
+
+# Global exclude patterns
+exclude: |
+  (?x)^(
+    \.godot/.*|
+    .*\.import|
+    .*\.Generated\.cs|
+    bin/.*|
+    obj/.*
+  )$

@@ -3,10 +3,11 @@ namespace ChessPlusPlus.Pieces
 	using System.Collections.Generic;
 	using ChessPlusPlus.Core;
 	using Godot;
+
 	public enum PieceColor
 	{
 		White,
-		Black
+		Black,
 	}
 
 	public enum PieceType
@@ -16,7 +17,7 @@ namespace ChessPlusPlus.Pieces
 		Bishop,
 		Rook,
 		Queen,
-		King
+		King,
 	}
 
 	/// <summary>
@@ -24,9 +25,14 @@ namespace ChessPlusPlus.Pieces
 	/// </summary>
 	public abstract partial class Piece : Node2D
 	{
-		[Export] public PieceColor Color { get; set; }
-		[Export] public PieceType Type { get; protected set; }
-		[Export] public string ClassName { get; protected set; } = "Standard";
+		[Export]
+		public PieceColor Color { get; set; }
+
+		[Export]
+		public PieceType Type { get; protected set; }
+
+		[Export]
+		public string ClassName { get; protected set; } = "Standard";
 
 		public Vector2I BoardPosition { get; set; }
 		public bool HasMoved { get; set; } = false;
@@ -110,7 +116,8 @@ namespace ChessPlusPlus.Pieces
 			// Try class-specific sprite first (e.g., white_pawn_ranger.png)
 			if (ClassName != "Standard")
 			{
-				string classSpecificPath = $"res://Resources/Textures/{colorPrefix}_{pieceName}_{ClassName.ToLower()}.png";
+				string classSpecificPath =
+					$"res://Resources/Textures/{colorPrefix}_{pieceName}_{ClassName.ToLower()}.png";
 				if (ResourceLoader.Exists(classSpecificPath))
 				{
 					sprite.Texture = GD.Load<Texture2D>(classSpecificPath);

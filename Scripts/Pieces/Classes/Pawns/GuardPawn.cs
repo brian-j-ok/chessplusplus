@@ -1,6 +1,6 @@
-using Godot;
 using System.Collections.Generic;
 using ChessPlusPlus.Core;
+using Godot;
 
 namespace ChessPlusPlus.Pieces
 {

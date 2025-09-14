@@ -1,18 +1,27 @@
-using Godot;
 using System.Collections.Generic;
 using System.Linq;
 using ChessPlusPlus.Core;
 using ChessPlusPlus.Pieces;
+using Godot;
 
 namespace ChessPlusPlus.UI
 {
 	public partial class ArmyCustomization : Control
 	{
-		[Export] public float MinSquareSize { get; set; } = 40.0f;
-		[Export] public float MaxSquareSize { get; set; } = 100.0f;
-		[Export] public Color LightSquareColor = new Color(0.9f, 0.9f, 0.8f);
-		[Export] public Color DarkSquareColor = new Color(0.4f, 0.3f, 0.2f);
-		[Export] public Color SelectedSquareColor = new Color(1.0f, 1.0f, 0.3f, 0.7f);
+		[Export]
+		public float MinSquareSize { get; set; } = 40.0f;
+
+		[Export]
+		public float MaxSquareSize { get; set; } = 100.0f;
+
+		[Export]
+		public Color LightSquareColor = new Color(0.9f, 0.9f, 0.8f);
+
+		[Export]
+		public Color DarkSquareColor = new Color(0.4f, 0.3f, 0.2f);
+
+		[Export]
+		public Color SelectedSquareColor = new Color(1.0f, 1.0f, 0.3f, 0.7f);
 
 		public float SquareSize { get; private set; } = 64.0f;
 
@@ -356,8 +365,9 @@ namespace ChessPlusPlus.UI
 
 		private PieceType? GetPieceTypeAtPosition(Vector2I position)
 		{
-			bool isPawnRow = (playerColor == PieceColor.White && position.Y == 6) ||
-							 (playerColor == PieceColor.Black && position.Y == 1);
+			bool isPawnRow =
+				(playerColor == PieceColor.White && position.Y == 6)
+				|| (playerColor == PieceColor.Black && position.Y == 1);
 
 			if (isPawnRow)
 			{
@@ -372,14 +382,15 @@ namespace ChessPlusPlus.UI
 				2 or 5 => PieceType.Bishop,
 				3 => PieceType.Queen,
 				4 => PieceType.King,
-				_ => null
+				_ => null,
 			};
 		}
 
 		private int GetPositionIndex(Vector2I position)
 		{
-			bool isPawnRow = (playerColor == PieceColor.White && position.Y == 6) ||
-							 (playerColor == PieceColor.Black && position.Y == 1);
+			bool isPawnRow =
+				(playerColor == PieceColor.White && position.Y == 6)
+				|| (playerColor == PieceColor.Black && position.Y == 1);
 
 			if (isPawnRow)
 			{
@@ -397,7 +408,7 @@ namespace ChessPlusPlus.UI
 				5 => 5, // Right bishop
 				6 => 6, // Right knight
 				7 => 7, // Right rook
-				_ => -1
+				_ => -1,
 			};
 		}
 

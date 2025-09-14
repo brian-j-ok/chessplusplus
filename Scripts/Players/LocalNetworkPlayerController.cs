@@ -1,10 +1,10 @@
 namespace ChessPlusPlus.Players
 {
+	using System.Threading.Tasks;
 	using ChessPlusPlus.Core;
 	using ChessPlusPlus.Network;
 	using ChessPlusPlus.Pieces;
 	using Godot;
-	using System.Threading.Tasks;
 
 	/// <summary>
 	/// A simplified network player controller that handles both local and remote players
@@ -13,7 +13,8 @@ namespace ChessPlusPlus.Players
 	/// </summary>
 	public partial class LocalNetworkPlayerController : HumanPlayerController
 	{
-		[Export] public bool IsLocalPlayer { get; set; } = true;
+		[Export]
+		public bool IsLocalPlayer { get; set; } = true;
 		private NetworkManager? networkManager;
 
 		public override void _Ready()

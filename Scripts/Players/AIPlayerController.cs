@@ -1,69 +1,75 @@
 namespace ChessPlusPlus.Players
 {
-	using ChessPlusPlus.Core;
-	using ChessPlusPlus.Pieces;
-	using Godot;
 	using System.Collections.Generic;
 	using System.Linq;
 	using System.Threading.Tasks;
+	using ChessPlusPlus.Core;
+	using ChessPlusPlus.Pieces;
+	using Godot;
 
 	public enum AIDifficulty
 	{
 		Easy = 1,
 		Medium = 2,
-		Hard = 3
+		Hard = 3,
 	}
 
 	public partial class AIPlayerController : PlayerController
 	{
-		[Export] public AIDifficulty Difficulty { get; set; } = AIDifficulty.Medium;
-		[Export] public float ThinkingTimeMin { get; set; } = 0.5f;
-		[Export] public float ThinkingTimeMax { get; set; } = 2.0f;
+		[Export]
+		public AIDifficulty Difficulty { get; set; } = AIDifficulty.Medium;
 
-		private readonly Dictionary<PieceType, int> pieceValues = new()
-		{
-			{ PieceType.Pawn, 100 },
-			{ PieceType.Knight, 320 },
-			{ PieceType.Bishop, 330 },
-			{ PieceType.Rook, 500 },
-			{ PieceType.Queen, 900 },
-			{ PieceType.King, 20000 }
-		};
+		[Export]
+		public float ThinkingTimeMin { get; set; } = 0.5f;
+
+		[Export]
+		public float ThinkingTimeMax { get; set; } = 2.0f;
+
+		private readonly Dictionary<PieceType, int> pieceValues =
+			new()
+			{
+				{ PieceType.Pawn, 100 },
+				{ PieceType.Knight, 320 },
+				{ PieceType.Bishop, 330 },
+				{ PieceType.Rook, 500 },
+				{ PieceType.Queen, 900 },
+				{ PieceType.King, 20000 },
+			};
 
 		private readonly float[,] pawnPositionBonus = new float[8, 8]
 		{
-			{ 0,  0,  0,  0,  0,  0,  0,  0},
-			{50, 50, 50, 50, 50, 50, 50, 50},
-			{10, 10, 20, 30, 30, 20, 10, 10},
-			{ 5,  5, 10, 25, 25, 10,  5,  5},
-			{ 0,  0,  0, 20, 20,  0,  0,  0},
-			{ 5, -5,-10,  0,  0,-10, -5,  5},
-			{ 5, 10, 10,-20,-20, 10, 10,  5},
-			{ 0,  0,  0,  0,  0,  0,  0,  0}
+			{ 0, 0, 0, 0, 0, 0, 0, 0 },
+			{ 50, 50, 50, 50, 50, 50, 50, 50 },
+			{ 10, 10, 20, 30, 30, 20, 10, 10 },
+			{ 5, 5, 10, 25, 25, 10, 5, 5 },
+			{ 0, 0, 0, 20, 20, 0, 0, 0 },
+			{ 5, -5, -10, 0, 0, -10, -5, 5 },
+			{ 5, 10, 10, -20, -20, 10, 10, 5 },
+			{ 0, 0, 0, 0, 0, 0, 0, 0 },
 		};
 
 		private readonly float[,] knightPositionBonus = new float[8, 8]
 		{
-			{-50,-40,-30,-30,-30,-30,-40,-50},
-			{-40,-20,  0,  0,  0,  0,-20,-40},
-			{-30,  0, 10, 15, 15, 10,  0,-30},
-			{-30,  5, 15, 20, 20, 15,  5,-30},
-			{-30,  0, 15, 20, 20, 15,  0,-30},
-			{-30,  5, 10, 15, 15, 10,  5,-30},
-			{-40,-20,  0,  5,  5,  0,-20,-40},
-			{-50,-40,-30,-30,-30,-30,-40,-50}
+			{ -50, -40, -30, -30, -30, -30, -40, -50 },
+			{ -40, -20, 0, 0, 0, 0, -20, -40 },
+			{ -30, 0, 10, 15, 15, 10, 0, -30 },
+			{ -30, 5, 15, 20, 20, 15, 5, -30 },
+			{ -30, 0, 15, 20, 20, 15, 0, -30 },
+			{ -30, 5, 10, 15, 15, 10, 5, -30 },
+			{ -40, -20, 0, 5, 5, 0, -20, -40 },
+			{ -50, -40, -30, -30, -30, -30, -40, -50 },
 		};
 
 		private readonly float[,] centerControlBonus = new float[8, 8]
 		{
-			{-20,-10,-10,-10,-10,-10,-10,-20},
-			{-10,  0,  0,  0,  0,  0,  0,-10},
-			{-10,  0,  5,  5,  5,  5,  0,-10},
-			{-10,  0,  5, 10, 10,  5,  0,-10},
-			{-10,  0,  5, 10, 10,  5,  0,-10},
-			{-10,  0,  5,  5,  5,  5,  0,-10},
-			{-10,  0,  0,  0,  0,  0,  0,-10},
-			{-20,-10,-10,-10,-10,-10,-10,-20}
+			{ -20, -10, -10, -10, -10, -10, -10, -20 },
+			{ -10, 0, 0, 0, 0, 0, 0, -10 },
+			{ -10, 0, 5, 5, 5, 5, 0, -10 },
+			{ -10, 0, 5, 10, 10, 5, 0, -10 },
+			{ -10, 0, 5, 10, 10, 5, 0, -10 },
+			{ -10, 0, 5, 5, 5, 5, 0, -10 },
+			{ -10, 0, 0, 0, 0, 0, 0, -10 },
+			{ -20, -10, -10, -10, -10, -10, -10, -20 },
 		};
 
 		public override void _Ready()
@@ -197,9 +203,7 @@ namespace ChessPlusPlus.Players
 			}
 
 			var opponentColor = PlayerColor == PieceColor.White ? PieceColor.Black : PieceColor.White;
-			var nextMoves = isMaximizing ?
-				GetAllPossibleMoves(PlayerColor) :
-				GetAllPossibleMoves(opponentColor);
+			var nextMoves = isMaximizing ? GetAllPossibleMoves(PlayerColor) : GetAllPossibleMoves(opponentColor);
 
 			if (nextMoves.Count == 0)
 			{

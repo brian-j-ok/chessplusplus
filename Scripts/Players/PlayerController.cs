@@ -1,9 +1,9 @@
 namespace ChessPlusPlus.Players
 {
+	using System.Threading.Tasks;
 	using ChessPlusPlus.Core;
 	using ChessPlusPlus.Pieces;
 	using Godot;
-	using System.Threading.Tasks;
 
 	public struct Move
 	{
@@ -25,8 +25,11 @@ namespace ChessPlusPlus.Players
 
 	public abstract partial class PlayerController : Node
 	{
-		[Export] public PieceColor PlayerColor { get; set; }
-		[Export] public string PlayerName { get; set; } = "Player";
+		[Export]
+		public PieceColor PlayerColor { get; set; }
+
+		[Export]
+		public string PlayerName { get; set; } = "Player";
 
 		protected Board board = null!;
 		protected GameManager gameManager = null!;

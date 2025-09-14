@@ -8,15 +8,22 @@ namespace ChessPlusPlus.Core
 	{
 		PlayerVsPlayer,
 		PlayerVsAI,
-		AIVsAI
+		AIVsAI,
 	}
 
 	public partial class GameConfig : Resource
 	{
-		[Export] public PieceColor PlayerColor { get; set; } = PieceColor.White;
-		[Export] public bool FlipBoardForBlack { get; set; } = true;
-		[Export] public GameMode Mode { get; set; } = GameMode.PlayerVsPlayer; // Default to dev mode
-		[Export] public AIDifficulty AIDifficulty { get; set; } = AIDifficulty.Medium;
+		[Export]
+		public PieceColor PlayerColor { get; set; } = PieceColor.White;
+
+		[Export]
+		public bool FlipBoardForBlack { get; set; } = true;
+
+		[Export]
+		public GameMode Mode { get; set; } = GameMode.PlayerVsPlayer; // Default to dev mode
+
+		[Export]
+		public AIDifficulty AIDifficulty { get; set; } = AIDifficulty.Medium;
 
 		private Army? customPlayerArmy = null;
 

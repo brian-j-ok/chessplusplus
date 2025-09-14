@@ -1,6 +1,6 @@
-using Godot;
 using System.Collections.Generic;
 using ChessPlusPlus.Core;
+using Godot;
 
 namespace ChessPlusPlus.Pieces
 {
@@ -8,10 +8,14 @@ namespace ChessPlusPlus.Pieces
 	{
 		protected Vector2I[] knightMoves = new Vector2I[]
 		{
-			new Vector2I(2, 1), new Vector2I(2, -1),
-			new Vector2I(-2, 1), new Vector2I(-2, -1),
-			new Vector2I(1, 2), new Vector2I(1, -2),
-			new Vector2I(-1, 2), new Vector2I(-1, -2)
+			new Vector2I(2, 1),
+			new Vector2I(2, -1),
+			new Vector2I(-2, 1),
+			new Vector2I(-2, -1),
+			new Vector2I(1, 2),
+			new Vector2I(1, -2),
+			new Vector2I(-1, 2),
+			new Vector2I(-1, -2),
 		};
 
 		public Knight()

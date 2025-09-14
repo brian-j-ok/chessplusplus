@@ -1,9 +1,9 @@
 namespace ChessPlusPlus.Players
 {
+	using System.Threading.Tasks;
 	using ChessPlusPlus.Core;
 	using ChessPlusPlus.Pieces;
 	using Godot;
-	using System.Threading.Tasks;
 
 	public partial class HumanPlayerController : PlayerController
 	{

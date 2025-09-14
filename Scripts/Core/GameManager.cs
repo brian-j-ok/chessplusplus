@@ -1,10 +1,11 @@
 namespace ChessPlusPlus.Core
 {
+	using System.Threading.Tasks;
 	using ChessPlusPlus.Network;
 	using ChessPlusPlus.Pieces;
 	using ChessPlusPlus.Players;
 	using Godot;
-	using System.Threading.Tasks;
+
 	public enum GameState
 	{
 		Setup,
@@ -12,12 +13,13 @@ namespace ChessPlusPlus.Core
 		Check,
 		Checkmate,
 		Stalemate,
-		Draw
+		Draw,
 	}
 
 	public partial class GameManager : Node2D
 	{
-		[Export] public Board Board { get; set; } = null!;
+		[Export]
+		public Board Board { get; set; } = null!;
 
 		public PieceColor CurrentTurn { get; private set; } = PieceColor.White;
 		public GameState State { get; private set; } = GameState.Setup;
@@ -275,9 +277,10 @@ namespace ChessPlusPlus.Core
 				// In dev mode, route to the current player
 				if (GameConfig.Instance.Mode == GameMode.PlayerVsPlayer)
 				{
-					var currentHumanPlayer = CurrentTurn == PieceColor.White ?
-						whitePlayer as HumanPlayerController :
-						blackPlayer as HumanPlayerController;
+					var currentHumanPlayer =
+						CurrentTurn == PieceColor.White
+							? whitePlayer as HumanPlayerController
+							: blackPlayer as HumanPlayerController;
 
 					if (mouseButton.ButtonIndex == MouseButton.Left)
 					{
@@ -305,7 +308,12 @@ namespace ChessPlusPlus.Core
 
 		private async Task ProcessNextTurn()
 		{
-			if (isProcessingTurn || State == GameState.Checkmate || State == GameState.Stalemate || State == GameState.Draw)
+			if (
+				isProcessingTurn
+				|| State == GameState.Checkmate
+				|| State == GameState.Stalemate
+				|| State == GameState.Draw
+			)
 				return;
 
 			isProcessingTurn = true;

@@ -257,7 +257,9 @@ namespace ChessPlusPlus.Core
 			boardVisual.HighlightSelectedSquare(piece.BoardPosition);
 
 			var possibleMoves = GetValidMovesForHighlighting(piece);
-			GD.Print($"{piece.Color} {piece.Type} at {piece.BoardPosition} has {possibleMoves.Count} possible moves: [{string.Join(", ", possibleMoves)}]");
+			GD.Print(
+				$"{piece.Color} {piece.Type} at {piece.BoardPosition} has {possibleMoves.Count} possible moves: [{string.Join(", ", possibleMoves)}]"
+			);
 			boardVisual.HighlightValidMoves(possibleMoves, this);
 		}
 
@@ -283,7 +285,9 @@ namespace ChessPlusPlus.Core
 				PieceType.Rook => new Rook(),
 				PieceType.Bishop => new Bishop(),
 				PieceType.Knight => new Knight(),
-				_ => new Queen() // Default to Queen
+				_ =>
+					new Queen() // Default to Queen
+				,
 			};
 
 			newPiece.Color = color;
@@ -377,6 +381,7 @@ namespace ChessPlusPlus.Core
 
 			return false;
 		}
+
 		/// <summary>
 		/// Flips board position vertically for when player chooses to play as white
 		/// </summary>

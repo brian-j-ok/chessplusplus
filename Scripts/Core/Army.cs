@@ -4,6 +4,7 @@ namespace ChessPlusPlus.Core
 	using System.Collections.Generic;
 	using ChessPlusPlus.Pieces;
 	using Godot;
+
 	/// <summary>
 	/// Represents a piece assignment linking position, type, and class variant
 	/// </summary>
@@ -59,9 +60,7 @@ namespace ChessPlusPlus.Core
 
 		public string GetPieceClass(PieceType type, int position)
 		{
-			return pieceClasses.TryGetValue((type, position), out string? className)
-				? className
-				: "Standard";
+			return pieceClasses.TryGetValue((type, position), out string? className) ? className : "Standard";
 		}
 
 		/// <summary>
@@ -85,7 +84,7 @@ namespace ChessPlusPlus.Core
 				PieceType.Rook => CreateRook(className),
 				PieceType.Queen => CreateQueen(className),
 				PieceType.King => CreateKing(className),
-				_ => throw new ArgumentException($"Unknown piece type: {type}")
+				_ => throw new ArgumentException($"Unknown piece type: {type}"),
 			};
 		}
 
@@ -95,7 +94,7 @@ namespace ChessPlusPlus.Core
 			{
 				"Ranger" => new RangerPawn(),
 				"Guard" => new GuardPawn(),
-				_ => new Pawn()
+				_ => new Pawn(),
 			};
 		}
 
@@ -104,7 +103,7 @@ namespace ChessPlusPlus.Core
 			return className switch
 			{
 				"Charge" => new ChargeKnight(),
-				_ => new Knight()
+				_ => new Knight(),
 			};
 		}
 

@@ -1,0 +1,17 @@
+# Godot generated files
+.godot/
+*.import
+*.Generated.cs
+
+# Build output
+bin/
+obj/
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+
+# Other
+*.min.js
+*.min.css

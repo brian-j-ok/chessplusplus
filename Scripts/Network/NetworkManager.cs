@@ -1,10 +1,10 @@
 namespace ChessPlusPlus.Network
 {
+	using System;
 	using ChessPlusPlus.Core;
 	using ChessPlusPlus.Pieces;
 	using ChessPlusPlus.Players;
 	using Godot;
-	using System;
 
 	public partial class NetworkManager : Node
 	{

@@ -8,8 +8,11 @@ namespace ChessPlusPlus.UI
 
 	public partial class MainMenu : Control
 	{
-		[Export] public PackedScene GameScene { get; set; } = null!;
-		[Export] public PackedScene ArmyCustomizationScene { get; set; } = null!;
+		[Export]
+		public PackedScene GameScene { get; set; } = null!;
+
+		[Export]
+		public PackedScene ArmyCustomizationScene { get; set; } = null!;
 
 		private Button startButton = null!;
 		private Button customizeArmyButton = null!;
@@ -326,7 +329,7 @@ namespace ChessPlusPlus.UI
 			{
 				GameMode.PlayerVsPlayer => "Start Dev Mode",
 				GameMode.PlayerVsAI => "Start vs AI",
-				_ => "Start Game"
+				_ => "Start Game",
 			};
 
 			// Re-enable color selection for non-network modes
@@ -473,7 +476,8 @@ namespace ChessPlusPlus.UI
 				playAsWhiteButton.ButtonPressed = true;
 				playAsBlackButton.ButtonPressed = false;
 
-				connectionStatusLabel.Text = $"Hosting on {networkManager.GetLocalIPAddress()}:7000\nWaiting for player...";
+				connectionStatusLabel.Text =
+					$"Hosting on {networkManager.GetLocalIPAddress()}:7000\nWaiting for player...";
 				connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Green);
 
 				// Connect to network events

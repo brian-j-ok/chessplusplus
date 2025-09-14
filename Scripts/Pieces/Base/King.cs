@@ -1,7 +1,7 @@
-using Godot;
 using System;
 using System.Collections.Generic;
 using ChessPlusPlus.Core;
+using Godot;
 
 namespace ChessPlusPlus.Pieces
 {
@@ -19,10 +19,14 @@ namespace ChessPlusPlus.Pieces
 
 			Vector2I[] directions = new Vector2I[]
 			{
-				new Vector2I(0, 1), new Vector2I(0, -1),
-				new Vector2I(1, 0), new Vector2I(-1, 0),
-				new Vector2I(1, 1), new Vector2I(1, -1),
-				new Vector2I(-1, 1), new Vector2I(-1, -1)
+				new Vector2I(0, 1),
+				new Vector2I(0, -1),
+				new Vector2I(1, 0),
+				new Vector2I(-1, 0),
+				new Vector2I(1, 1),
+				new Vector2I(1, -1),
+				new Vector2I(-1, 1),
+				new Vector2I(-1, -1),
 			};
 
 			foreach (var direction in directions)
