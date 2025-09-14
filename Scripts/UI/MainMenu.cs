@@ -1,6 +1,7 @@
 namespace ChessPlusPlus.UI
 {
 	using ChessPlusPlus.Core;
+	using ChessPlusPlus.Network;
 	using ChessPlusPlus.Pieces;
 	using ChessPlusPlus.Players;
 	using Godot;
@@ -27,6 +28,13 @@ namespace ChessPlusPlus.UI
 		private Button easyAIButton = null!;
 		private Button mediumAIButton = null!;
 		private Button hardAIButton = null!;
+
+		// Network UI elements
+		private VBoxContainer networkContainer = null!;
+		private Button hostGameButton = null!;
+		private Button joinGameButton = null!;
+		private LineEdit ipAddressInput = null!;
+		private Label connectionStatusLabel = null!;
 
 		public override void _Ready()
 		{
@@ -108,10 +116,10 @@ namespace ChessPlusPlus.UI
 			// Network Mode button
 			networkModeButton = new Button();
 			networkModeButton.Name = "NetworkModeButton";
-			networkModeButton.Text = "Network\n(Coming Soon)";
+			networkModeButton.Text = "LAN Game";
 			networkModeButton.CustomMinimumSize = new Vector2(120, 50);
 			networkModeButton.ToggleMode = true;
-			networkModeButton.Disabled = true; // Not implemented yet
+			networkModeButton.Disabled = false; // Now implemented!
 			gameModeContainer.AddChild(networkModeButton);
 
 			// Spacer
@@ -152,6 +160,58 @@ namespace ChessPlusPlus.UI
 			var spacerAfterDifficulty = new Control();
 			spacerAfterDifficulty.CustomMinimumSize = new Vector2(0, 20);
 			configContainer.AddChild(spacerAfterDifficulty);
+
+			// Network game container (initially hidden)
+			networkContainer = new VBoxContainer();
+			networkContainer.Alignment = BoxContainer.AlignmentMode.Center;
+			networkContainer.Visible = false;
+			configContainer.AddChild(networkContainer);
+
+			// Host/Join buttons
+			var networkButtonsContainer = new HBoxContainer();
+			networkButtonsContainer.Alignment = BoxContainer.AlignmentMode.Center;
+			networkContainer.AddChild(networkButtonsContainer);
+
+			hostGameButton = new Button();
+			hostGameButton.Text = "Host Game";
+			hostGameButton.CustomMinimumSize = new Vector2(120, 40);
+			networkButtonsContainer.AddChild(hostGameButton);
+
+			var networkButtonSpacer = new Control();
+			networkButtonSpacer.CustomMinimumSize = new Vector2(20, 0);
+			networkButtonsContainer.AddChild(networkButtonSpacer);
+
+			joinGameButton = new Button();
+			joinGameButton.Text = "Join Game";
+			joinGameButton.CustomMinimumSize = new Vector2(120, 40);
+			networkButtonsContainer.AddChild(joinGameButton);
+
+			// IP address input
+			var ipContainer = new HBoxContainer();
+			ipContainer.Alignment = BoxContainer.AlignmentMode.Center;
+			networkContainer.AddChild(ipContainer);
+
+			var ipLabel = new Label();
+			ipLabel.Text = "Host IP: ";
+			ipContainer.AddChild(ipLabel);
+
+			ipAddressInput = new LineEdit();
+			ipAddressInput.Text = "127.0.0.1";
+			ipAddressInput.PlaceholderText = "Enter host IP address";
+			ipAddressInput.CustomMinimumSize = new Vector2(200, 30);
+			ipContainer.AddChild(ipAddressInput);
+
+			// Connection status
+			connectionStatusLabel = new Label();
+			connectionStatusLabel.Text = "";
+			connectionStatusLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Yellow);
+			networkContainer.AddChild(connectionStatusLabel);
+
+			// Spacer after network
+			var spacerAfterNetwork = new Control();
+			spacerAfterNetwork.CustomMinimumSize = new Vector2(0, 20);
+			configContainer.AddChild(spacerAfterNetwork);
 
 			// Color selection label
 			var colorLabel = new Label();
@@ -228,7 +288,11 @@ namespace ChessPlusPlus.UI
 			// Game mode buttons
 			devModeButton.Pressed += () => OnGameModeSelected(GameMode.PlayerVsPlayer);
 			aiModeButton.Pressed += () => OnGameModeSelected(GameMode.PlayerVsAI);
-			// networkModeButton would connect here when implemented
+			networkModeButton.Pressed += () => OnNetworkModeSelected();
+
+			// Network buttons
+			hostGameButton.Pressed += OnHostGame;
+			joinGameButton.Pressed += OnJoinGame;
 
 			// AI difficulty buttons
 			easyAIButton.Pressed += () => OnAIDifficultySelected(AIDifficulty.Easy);
@@ -251,9 +315,11 @@ namespace ChessPlusPlus.UI
 			// Update button states
 			devModeButton.ButtonPressed = mode == GameMode.PlayerVsPlayer;
 			aiModeButton.ButtonPressed = mode == GameMode.PlayerVsAI;
+			networkModeButton.ButtonPressed = false;
 
 			// Show/hide AI difficulty selection
 			aiDifficultyContainer.Visible = mode == GameMode.PlayerVsAI;
+			networkContainer.Visible = false;
 
 			// Update start button text
 			startButton.Text = mode switch
@@ -263,7 +329,33 @@ namespace ChessPlusPlus.UI
 				_ => "Start Game"
 			};
 
+			// Re-enable color selection for non-network modes
+			playAsWhiteButton.Disabled = false;
+			playAsBlackButton.Disabled = false;
+
 			GD.Print($"Game mode selected: {mode}");
+		}
+
+		private void OnNetworkModeSelected()
+		{
+			// Update button states
+			devModeButton.ButtonPressed = false;
+			aiModeButton.ButtonPressed = false;
+			networkModeButton.ButtonPressed = true;
+
+			// Show network UI, hide AI difficulty
+			aiDifficultyContainer.Visible = false;
+			networkContainer.Visible = true;
+
+			// Disable start button until connected
+			startButton.Text = "Waiting for connection...";
+			startButton.Disabled = true;
+
+			// Color will be determined by host/join
+			playAsWhiteButton.Disabled = true;
+			playAsBlackButton.Disabled = true;
+
+			GD.Print("Network mode selected");
 		}
 
 		private void OnAIDifficultySelected(AIDifficulty difficulty)
@@ -359,6 +451,147 @@ namespace ChessPlusPlus.UI
 			{
 				GD.PrintErr("Failed to load game scene!");
 			}
+		}
+
+		private void OnHostGame()
+		{
+			// Add NetworkManager to the scene if not already present
+			var networkManager = NetworkManager.Instance;
+			if (networkManager.GetParent() == null)
+			{
+				GetTree().Root.AddChild(networkManager);
+			}
+
+			// Host the game
+			var error = networkManager.HostGame();
+			if (error == Error.Ok)
+			{
+				// Host is always white
+				GameConfig.Instance.SetPlayerColor(PieceColor.White);
+				GameConfig.Instance.Mode = GameMode.PlayerVsPlayer; // Network games use PlayerVsPlayer mode
+
+				playAsWhiteButton.ButtonPressed = true;
+				playAsBlackButton.ButtonPressed = false;
+
+				connectionStatusLabel.Text = $"Hosting on {networkManager.GetLocalIPAddress()}:7000\nWaiting for player...";
+				connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Green);
+
+				// Connect to network events
+				networkManager.PlayerConnected += OnPlayerConnected;
+				networkManager.PlayerDisconnected += OnPlayerDisconnected;
+
+				startButton.Text = "Waiting for player...";
+				startButton.Disabled = true;
+			}
+			else
+			{
+				connectionStatusLabel.Text = "Failed to host game!";
+				connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Red);
+			}
+		}
+
+		private void OnJoinGame()
+		{
+			// Add NetworkManager to the scene if not already present
+			var networkManager = NetworkManager.Instance;
+			if (networkManager.GetParent() == null)
+			{
+				GetTree().Root.AddChild(networkManager);
+			}
+
+			// Join the game
+			var hostAddress = ipAddressInput.Text;
+			var error = networkManager.JoinGame(hostAddress);
+
+			if (error == Error.Ok)
+			{
+				// Client is always black
+				GameConfig.Instance.SetPlayerColor(PieceColor.Black);
+				GameConfig.Instance.Mode = GameMode.PlayerVsPlayer; // Network games use PlayerVsPlayer mode
+
+				playAsWhiteButton.ButtonPressed = false;
+				playAsBlackButton.ButtonPressed = true;
+
+				connectionStatusLabel.Text = $"Connecting to {hostAddress}...";
+				connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Yellow);
+
+				// Connect to network events
+				networkManager.ConnectionSucceeded += OnConnectionSucceeded;
+				networkManager.ConnectionFailed += OnConnectionFailed;
+				networkManager.ServerDisconnected += OnServerDisconnected;
+
+				startButton.Text = "Connecting...";
+				startButton.Disabled = true;
+			}
+			else
+			{
+				connectionStatusLabel.Text = "Failed to join game!";
+				connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Red);
+			}
+		}
+
+		private void OnPlayerConnected(int id)
+		{
+			GD.Print($"Player connected with ID: {id}");
+			connectionStatusLabel.Text = "Player connected!";
+			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Green);
+
+			// Enable start button for host
+			if (NetworkManager.Instance.IsHost)
+			{
+				startButton.Text = "Start Network Game";
+				startButton.Disabled = false;
+			}
+		}
+
+		private void OnPlayerDisconnected(int id)
+		{
+			GD.Print($"Player disconnected with ID: {id}");
+			connectionStatusLabel.Text = "Player disconnected";
+			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Red);
+
+			startButton.Text = "Waiting for player...";
+			startButton.Disabled = true;
+		}
+
+		private void OnConnectionSucceeded()
+		{
+			GD.Print("Successfully connected to host");
+			connectionStatusLabel.Text = "Connected!";
+			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Green);
+
+			// Client waits for host to start
+			startButton.Text = "Waiting for host...";
+			startButton.Disabled = true;
+
+			// Auto-start for client when connected
+			CallDeferred(nameof(StartNetworkGame));
+		}
+
+		private void OnConnectionFailed()
+		{
+			GD.PrintErr("Failed to connect to host");
+			connectionStatusLabel.Text = "Connection failed!";
+			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Red);
+
+			startButton.Text = "Connection failed";
+			startButton.Disabled = true;
+		}
+
+		private void OnServerDisconnected()
+		{
+			GD.Print("Disconnected from server");
+			connectionStatusLabel.Text = "Disconnected from host";
+			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Red);
+		}
+
+		private void StartNetworkGame()
+		{
+			// Set network mode flag (we'll use this in GameManager)
+			GameConfig.Instance.Mode = GameMode.PlayerVsPlayer;
+
+			// Load game scene
+			OnStartGame();
 		}
 	}
 }

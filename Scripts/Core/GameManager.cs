@@ -1,5 +1,6 @@
 namespace ChessPlusPlus.Core
 {
+	using ChessPlusPlus.Network;
 	using ChessPlusPlus.Pieces;
 	using ChessPlusPlus.Players;
 	using Godot;
@@ -84,6 +85,26 @@ namespace ChessPlusPlus.Core
 			var config = GameConfig.Instance;
 			GD.Print($"Initializing players for mode: {config.Mode}");
 
+			// Check if we're in network mode
+			var networkManager = NetworkManager.Instance;
+			if (networkManager.IsConnected)
+			{
+				GD.Print("Setting up network game");
+				// Network game: one local, one remote
+				if (config.PlayerColor == PieceColor.White)
+				{
+					whitePlayer = CreateNetworkPlayer(PieceColor.White, true); // Local
+					blackPlayer = CreateNetworkPlayer(PieceColor.Black, false); // Remote
+				}
+				else
+				{
+					whitePlayer = CreateNetworkPlayer(PieceColor.White, false); // Remote
+					blackPlayer = CreateNetworkPlayer(PieceColor.Black, true); // Local
+				}
+				// Initialize already called in CreateNetworkPlayer
+				return;
+			}
+
 			switch (config.Mode)
 			{
 				case GameMode.PlayerVsPlayer:
@@ -136,6 +157,24 @@ namespace ChessPlusPlus.Core
 			player.Difficulty = difficulty;
 			player.PlayerName = $"AI ({color}, {difficulty})";
 			AddChild(player);
+			return player;
+		}
+
+		private PlayerController CreateNetworkPlayer(PieceColor color, bool isLocal)
+		{
+			var player = new LocalNetworkPlayerController();
+			player.PlayerColor = color;
+			player.IsLocalPlayer = isLocal;
+			player.PlayerName = isLocal ? $"You ({color})" : $"Opponent ({color})";
+			AddChild(player);
+			player.Initialize(Board, this);
+
+			// For local network players, add to humanPlayer for input handling
+			if (isLocal)
+			{
+				humanPlayer = player;
+			}
+
 			return player;
 		}
 

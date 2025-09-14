@@ -1,0 +1,104 @@
+namespace ChessPlusPlus.Players
+{
+	using ChessPlusPlus.Core;
+	using ChessPlusPlus.Network;
+	using ChessPlusPlus.Pieces;
+	using Godot;
+	using System.Threading.Tasks;
+
+	/// <summary>
+	/// A simplified network player controller that handles both local and remote players
+	/// Local players use mouse input and send moves over network
+	/// Remote players receive moves from the network
+	/// </summary>
+	public partial class LocalNetworkPlayerController : HumanPlayerController
+	{
+		[Export] public bool IsLocalPlayer { get; set; } = true;
+		private NetworkManager? networkManager;
+
+		public override void _Ready()
+		{
+			base._Ready();
+			PlayerName = IsLocalPlayer ? $"You ({PlayerColor})" : $"Opponent ({PlayerColor})";
+
+			// Get NetworkManager instance
+			networkManager = NetworkManager.Instance;
+			if (!IsLocalPlayer && networkManager != null)
+			{
+				// Listen for moves from the network
+				networkManager.MoveReceived += OnNetworkMoveReceived;
+			}
+		}
+
+		public override async Task<Move?> GetNextMoveAsync()
+		{
+			if (IsLocalPlayer)
+			{
+				// Local player uses normal human input
+				var move = await base.GetNextMoveAsync();
+
+				// Send the move over the network
+				if (move != null && networkManager != null && networkManager.IsConnected)
+				{
+					GD.Print($"Sending move to network: {move.Value.From} to {move.Value.To}");
+					networkManager.SendMove(move.Value.From, move.Value.To);
+				}
+
+				return move;
+			}
+			else
+			{
+				// Remote player waits for network move
+				if (currentMoveTask != null)
+				{
+					GD.PrintErr("Already waiting for a move!");
+					return null;
+				}
+
+				GD.Print($"Waiting for opponent's move ({PlayerColor})...");
+				currentMoveTask = new TaskCompletionSource<Move?>();
+
+				var move = await currentMoveTask.Task;
+				currentMoveTask = null;
+				return move;
+			}
+		}
+
+		private void OnNetworkMoveReceived(Vector2I from, Vector2I to)
+		{
+			if (IsLocalPlayer)
+			{
+				// Ignore network moves if we're the local player
+				return;
+			}
+
+			if (currentMoveTask == null)
+			{
+				GD.PrintErr("Received network move but not waiting for one!");
+				return;
+			}
+
+			var piece = board.GetPieceAt(from);
+			if (piece == null)
+			{
+				GD.PrintErr($"No piece at {from} for network move!");
+				currentMoveTask.SetResult(null);
+				return;
+			}
+
+			var capturedPiece = board.GetPieceAt(to);
+			var move = new Move(from, to, piece, capturedPiece);
+			GD.Print($"Received opponent's move: {from} to {to}");
+			currentMoveTask.SetResult(move);
+		}
+
+		public override void OnTurnStarted()
+		{
+			base.OnTurnStarted();
+			if (!IsLocalPlayer)
+			{
+				GD.Print($"Opponent's turn ({PlayerColor})");
+			}
+		}
+	}
+}

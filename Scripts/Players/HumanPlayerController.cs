@@ -7,7 +7,7 @@ namespace ChessPlusPlus.Players
 
 	public partial class HumanPlayerController : PlayerController
 	{
-		private TaskCompletionSource<Move?>? currentMoveTask;
+		protected TaskCompletionSource<Move?>? currentMoveTask;
 		private Piece? selectedPiece;
 		private Vector2I selectedPosition;
 		private bool isWaitingForInput = false;
