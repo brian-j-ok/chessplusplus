@@ -6,12 +6,16 @@ namespace ChessPlusPlus.Pieces
 {
 	public partial class ChargeKnight : Knight
 	{
-		private Vector2I[] extendedMoves = new Vector2I[]
+		// All possible three-cell line movements (can hop over 2 pieces)
+		private Vector2I[] chargeDirections = new Vector2I[]
 		{
-			new Vector2I(3, 1), new Vector2I(3, -1),
-			new Vector2I(-3, 1), new Vector2I(-3, -1),
-			new Vector2I(1, 3), new Vector2I(1, -3),
-			new Vector2I(-1, 3), new Vector2I(-1, -3)
+			// Horizontal and vertical charges
+			new Vector2I(3, 0), new Vector2I(-3, 0),  // Left/Right
+			new Vector2I(0, 3), new Vector2I(0, -3),  // Up/Down
+
+			// Diagonal charges
+			new Vector2I(3, 3), new Vector2I(-3, -3),   // Main diagonal
+			new Vector2I(3, -3), new Vector2I(-3, 3),   // Anti-diagonal
 		};
 
 		public ChargeKnight()
@@ -22,20 +26,20 @@ namespace ChessPlusPlus.Pieces
 
 		public override List<Vector2I> GetPossibleMoves(Board board)
 		{
-			var moves = base.GetPossibleMoves(board);
+			var moves = new List<Vector2I>();
 
-			if (!HasMoved)
+			// Charge Knight can move in any straight line of exactly 3 cells
+			// It can hop over any pieces in between
+			foreach (var direction in chargeDirections)
 			{
-				foreach (var move in extendedMoves)
+				var targetPos = BoardPosition + direction;
+				if (IsValidPosition(targetPos))
 				{
-					var targetPos = BoardPosition + move;
-					if (IsValidPosition(targetPos))
+					var targetPiece = board.GetPieceAt(targetPos);
+					// Can move to empty squares or capture enemy pieces
+					if (targetPiece == null || IsEnemyPiece(targetPiece))
 					{
-						var targetPiece = board.GetPieceAt(targetPos);
-						if (targetPiece == null || IsEnemyPiece(targetPiece))
-						{
-							moves.Add(targetPos);
-						}
+						moves.Add(targetPos);
 					}
 				}
 			}

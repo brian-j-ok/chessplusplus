@@ -128,6 +128,11 @@ namespace ChessPlusPlus.Core
 			{
 				if (piece.IsEnemyPiece(targetPiece))
 				{
+					// Check if the target can be captured from this direction
+					if (!CanBeCapturedFrom(targetPiece, from, to))
+					{
+						return false;
+					}
 					CapturePiece(targetPiece, piece);
 				}
 				else
@@ -369,6 +374,25 @@ namespace ChessPlusPlus.Core
 		public Vector2I GetDisplayPosition(Vector2I boardPos)
 		{
 			return GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(boardPos) : boardPos;
+		}
+
+		/// <summary>
+		/// Checks if a piece can be captured from a specific direction
+		/// Used for special capture immunity mechanics like Guard Pawns
+		/// </summary>
+		private bool CanBeCapturedFrom(Piece target, Vector2I attackerFrom, Vector2I targetPos)
+		{
+			// Guard Pawns can't be captured from horizontal or vertical directions
+			if (target is GuardPawn)
+			{
+				var delta = targetPos - attackerFrom;
+				// Check if movement is purely horizontal or vertical
+				if (delta.X == 0 || delta.Y == 0)
+				{
+					return false; // Guard Pawn is immune to horizontal/vertical captures
+				}
+			}
+			return true; // Normal pieces can be captured from any direction
 		}
 	}
 }
