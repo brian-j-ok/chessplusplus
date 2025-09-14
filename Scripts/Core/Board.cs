@@ -1,5 +1,6 @@
 namespace ChessPlusPlus.Core
 {
+	using System;
 	using System.Collections.Generic;
 	using ChessPlusPlus.Pieces;
 	using Godot;
@@ -242,7 +243,7 @@ namespace ChessPlusPlus.Core
 			boardVisual.ClearHighlights();
 			boardVisual.HighlightSelectedSquare(piece.BoardPosition);
 
-			var possibleMoves = piece.GetPossibleMoves(this);
+			var possibleMoves = GetValidMovesForHighlighting(piece);
 			GD.Print($"{piece.Color} {piece.Type} at {piece.BoardPosition} has {possibleMoves.Count} possible moves: [{string.Join(", ", possibleMoves)}]");
 			boardVisual.HighlightValidMoves(possibleMoves, this);
 		}
@@ -380,19 +381,57 @@ namespace ChessPlusPlus.Core
 		/// Checks if a piece can be captured from a specific direction
 		/// Used for special capture immunity mechanics like Guard Pawns
 		/// </summary>
-		private bool CanBeCapturedFrom(Piece target, Vector2I attackerFrom, Vector2I targetPos)
+		public bool CanBeCapturedFrom(Piece target, Vector2I attackerFrom, Vector2I targetPos)
 		{
 			// Guard Pawns can't be captured from horizontal or vertical directions
 			if (target is GuardPawn)
 			{
 				var delta = targetPos - attackerFrom;
+				var absX = Math.Abs(delta.X);
+				var absY = Math.Abs(delta.Y);
+
 				// Check if movement is purely horizontal or vertical
-				if (delta.X == 0 || delta.Y == 0)
+				// Horizontal: Y doesn't change (delta.Y == 0)
+				// Vertical: X doesn't change (delta.X == 0)
+				if (absX == 0 || absY == 0)
 				{
 					return false; // Guard Pawn is immune to horizontal/vertical captures
 				}
+				// Diagonal movements are allowed (both X and Y change)
 			}
 			return true; // Normal pieces can be captured from any direction
+		}
+
+		/// <summary>
+		/// Gets valid moves for highlighting, filtering out illegal captures
+		/// </summary>
+		private List<Vector2I> GetValidMovesForHighlighting(Piece piece)
+		{
+			var possibleMoves = piece.GetPossibleMoves(this);
+			var validMoves = new List<Vector2I>();
+
+			foreach (var move in possibleMoves)
+			{
+				var targetPiece = GetPieceAt(move);
+
+				// If there's an enemy piece, check if it can actually be captured
+				if (targetPiece != null && piece.IsEnemyPiece(targetPiece))
+				{
+					if (CanBeCapturedFrom(targetPiece, piece.BoardPosition, move))
+					{
+						validMoves.Add(move);
+					}
+					// Skip this move if the capture would be blocked
+				}
+				else if (targetPiece == null)
+				{
+					// Empty square - always valid
+					validMoves.Add(move);
+				}
+				// Friendly pieces are already filtered out by GetPossibleMoves
+			}
+
+			return validMoves;
 		}
 	}
 }
