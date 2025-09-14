@@ -136,8 +136,13 @@ namespace ChessPlusPlus.Core
 				"Standard" => $"Standard {pieceType.ToString().ToLower()} with traditional movement",
 				"Ranger" when pieceType == PieceType.Pawn =>
 					"Can move 2 squares forward at any time and capture backwards",
-				"Guard" when pieceType == PieceType.Pawn => "Enhanced defensive capabilities",
-				"Charge" when pieceType == PieceType.Knight => "Aggressive knight variant with special charge ability",
+				"Guard" when pieceType == PieceType.Pawn => "Cannot be captured from horizontal or vertical directions",
+				"Charge" when pieceType == PieceType.Knight =>
+					"Moves exactly 3 squares in straight lines, jumping over pieces",
+				"Freezing" when pieceType == PieceType.Bishop =>
+					"Freezes enemy pieces that land adjacent until this bishop moves",
+				"Bombing" when pieceType == PieceType.Rook =>
+					"Can capture enemies one square beyond normal range by throwing bombs",
 				_ => $"{className} variant of {pieceType.ToString().ToLower()}",
 			};
 		}

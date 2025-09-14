@@ -38,6 +38,15 @@ namespace ChessPlusPlus.Core.Validators
 		}
 
 		/// <summary>
+		/// Highlights specific moves on the board
+		/// </summary>
+		public void HighlightMoves(List<Vector2I> moves)
+		{
+			ClearHighlights();
+			boardVisual.HighlightValidMoves(moves, board);
+		}
+
+		/// <summary>
 		/// Clears all highlights from the board
 		/// </summary>
 		public void ClearHighlights()

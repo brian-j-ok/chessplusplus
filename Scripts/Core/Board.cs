@@ -2,6 +2,7 @@ namespace ChessPlusPlus.Core
 {
 	using System;
 	using System.Collections.Generic;
+	using ChessPlusPlus.Core.Abilities;
 	using ChessPlusPlus.Core.Validators;
 	using ChessPlusPlus.Pieces;
 	using Godot;
@@ -13,6 +14,7 @@ namespace ChessPlusPlus.Core
 		private Army blackArmy = null!;
 		private ChessPlusPlus.UI.BoardVisual boardVisual = null!;
 		private PieceHighlighter? pieceHighlighter;
+		private BoardStateManager? stateManager;
 
 		[Signal]
 		public delegate void PieceMovedEventHandler(Piece piece, Vector2I from, Vector2I to);
@@ -54,6 +56,12 @@ namespace ChessPlusPlus.Core
 
 			// Create piece highlighter
 			pieceHighlighter = new PieceHighlighter(this, boardVisual);
+
+			// Create board state manager
+			stateManager = new BoardStateManager();
+			stateManager.Name = "BoardStateManager";
+			AddChild(stateManager);
+			stateManager.Initialize(this);
 
 			// Check for custom army from GameConfig
 			if (GameConfig.Instance.HasCustomArmy())
@@ -115,6 +123,9 @@ namespace ChessPlusPlus.Core
 			AddChild(piece);
 
 			piece.Position = BoardToWorldPosition(position);
+
+			// Register piece with state manager
+			stateManager?.RegisterPiece(piece);
 		}
 
 		/// <summary>
@@ -122,7 +133,7 @@ namespace ChessPlusPlus.Core
 		/// </summary>
 		public bool IsValidMove(Vector2I from, Vector2I to)
 		{
-			return BoardMovementValidator.IsValidMove(this, from, to);
+			return BoardMovementValidator.IsValidMove(this, from, to, stateManager);
 		}
 
 		/// <summary>
@@ -141,7 +152,7 @@ namespace ChessPlusPlus.Core
 				if (piece.IsEnemyPiece(targetPiece))
 				{
 					// Check if the target can be captured from this direction
-					if (!BoardMovementValidator.CanBeCapturedFrom(targetPiece, from, to))
+					if (!BoardMovementValidator.CanBeCapturedFrom(targetPiece, from, to, stateManager))
 					{
 						return false;
 					}
@@ -164,6 +175,9 @@ namespace ChessPlusPlus.Core
 			piece.OnMoved(from, to, this);
 			piece.Position = BoardToWorldPosition(to);
 
+			// Notify state manager of the move
+			stateManager?.OnPieceMoved(piece, from, to);
+
 			EmitSignal(SignalName.PieceMoved, piece, from, to);
 
 			if (piece is Pawn pawn && pawn.CanBePromoted())
@@ -177,6 +191,10 @@ namespace ChessPlusPlus.Core
 		private void CapturePiece(Piece captured, Piece capturer)
 		{
 			pieces[captured.BoardPosition.X, captured.BoardPosition.Y] = null;
+
+			// Unregister from state manager
+			stateManager?.UnregisterPiece(captured);
+
 			EmitSignal(SignalName.PieceCaptured, captured, capturer);
 			captured.OnCaptured(this);
 		}
@@ -248,7 +266,9 @@ namespace ChessPlusPlus.Core
 
 		public void HighlightPossibleMoves(Piece piece)
 		{
-			pieceHighlighter?.HighlightPossibleMoves(piece);
+			// Get moves with ability modifications
+			var validMoves = BoardMovementValidator.GetValidMovesForPiece(this, piece, stateManager);
+			pieceHighlighter?.HighlightMoves(validMoves);
 		}
 
 		public void ClearHighlights()
@@ -381,6 +401,16 @@ namespace ChessPlusPlus.Core
 		public Vector2I GetDisplayPosition(Vector2I boardPos)
 		{
 			return GameConfig.Instance.ShouldFlipBoard() ? FlipBoardPosition(boardPos) : boardPos;
+		}
+
+		public BoardStateManager? GetStateManager()
+		{
+			return stateManager;
+		}
+
+		public void OnTurnStart(PieceColor currentTurn)
+		{
+			stateManager?.OnTurnStart(currentTurn);
 		}
 	}
 }

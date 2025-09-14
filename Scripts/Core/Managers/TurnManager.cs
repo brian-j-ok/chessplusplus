@@ -91,12 +91,15 @@ namespace ChessPlusPlus.Core.Managers
 		/// <summary>
 		/// Ends the current turn and switches to the next player
 		/// </summary>
-		public void EndTurn()
+		public void EndTurn(Board? board = null)
 		{
 			currentPlayer?.OnTurnEnded();
 
 			var previousTurn = CurrentTurn;
 			CurrentTurn = CurrentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;
+
+			// Notify board of turn change for ability processing
+			board?.OnTurnStart(CurrentTurn);
 
 			EmitSignal(SignalName.TurnEnded, (int)previousTurn);
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);

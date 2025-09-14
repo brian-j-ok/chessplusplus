@@ -109,12 +109,20 @@ namespace ChessPlusPlus.Core
 
 		private Piece CreateBishop(string className)
 		{
-			return new Bishop();
+			return className switch
+			{
+				"Freezing" => new FreezingBishop(),
+				_ => new Bishop(),
+			};
 		}
 
 		private Piece CreateRook(string className)
 		{
-			return new Rook();
+			return className switch
+			{
+				"Bombing" => new BombingRook(),
+				_ => new Rook(),
+			};
 		}
 
 		private Piece CreateQueen(string className)

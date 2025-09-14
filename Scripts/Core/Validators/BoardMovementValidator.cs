@@ -1,6 +1,7 @@
 namespace ChessPlusPlus.Core.Validators
 {
 	using System;
+	using ChessPlusPlus.Core.Abilities;
 	using ChessPlusPlus.Pieces;
 	using Godot;
 
@@ -12,10 +13,17 @@ namespace ChessPlusPlus.Core.Validators
 		/// <summary>
 		/// Checks if a move is valid without executing it
 		/// </summary>
-		public static bool IsValidMove(Board board, Vector2I from, Vector2I to)
+		public static bool IsValidMove(Board board, Vector2I from, Vector2I to, BoardStateManager? stateManager = null)
 		{
 			var piece = board.GetPieceAt(from);
-			if (piece == null || !piece.CanMoveTo(to, board))
+			if (piece == null)
+				return false;
+
+			// Check if piece is frozen
+			if (stateManager != null && !stateManager.CanPieceMove(piece))
+				return false;
+
+			if (!piece.CanMoveTo(to, board))
 				return false;
 
 			if (!board.IsMoveLegal(from, to, piece.Color))
@@ -27,21 +35,25 @@ namespace ChessPlusPlus.Core.Validators
 		/// <summary>
 		/// Checks if a piece can be captured from a specific direction
 		/// </summary>
-		public static bool CanBeCapturedFrom(Piece target, Vector2I attackerFrom, Vector2I targetPos)
+		public static bool CanBeCapturedFrom(
+			Piece target,
+			Vector2I attackerFrom,
+			Vector2I targetPos,
+			BoardStateManager? stateManager = null
+		)
 		{
-			// Guard Pawns can't be captured from horizontal or vertical directions
-			if (target is GuardPawn)
+			// Use ability system if available
+			if (stateManager != null)
 			{
-				var delta = targetPos - attackerFrom;
-				var absX = Math.Abs(delta.X);
-				var absY = Math.Abs(delta.Y);
-
-				// Check if movement is purely horizontal or vertical
-				if (absX == 0 || absY == 0)
-				{
-					return false; // Guard Pawn is immune to horizontal/vertical captures
-				}
+				return stateManager.CanBeCapturedFrom(target, attackerFrom);
 			}
+
+			// Fallback for legacy code - check if target has defensive ability
+			if (target is IDefensiveAbility defensiveAbility)
+			{
+				return defensiveAbility.CanBeCapturedFrom(target, attackerFrom, null!);
+			}
+
 			return true; // Normal pieces can be captured from any direction
 		}
 
@@ -54,11 +66,26 @@ namespace ChessPlusPlus.Core.Validators
 		}
 
 		/// <summary>
-		/// Gets valid moves for a piece, filtering out illegal captures
+		/// Gets valid moves for a piece, filtering out illegal captures and applying abilities
 		/// </summary>
-		public static System.Collections.Generic.List<Vector2I> GetValidMovesForPiece(Board board, Piece piece)
+		public static System.Collections.Generic.List<Vector2I> GetValidMovesForPiece(
+			Board board,
+			Piece piece,
+			BoardStateManager? stateManager = null
+		)
 		{
 			var possibleMoves = piece.GetPossibleMoves(board);
+
+			// Apply ability modifications if state manager is available
+			if (stateManager != null)
+			{
+				possibleMoves = stateManager.GetModifiedMoves(piece, possibleMoves);
+
+				// Add additional captures from abilities
+				var additionalCaptures = stateManager.GetAdditionalCaptures(piece);
+				possibleMoves.AddRange(additionalCaptures);
+			}
+
 			var validMoves = new System.Collections.Generic.List<Vector2I>();
 
 			foreach (var move in possibleMoves)
@@ -68,7 +95,7 @@ namespace ChessPlusPlus.Core.Validators
 				// If there's an enemy piece, check if it can actually be captured
 				if (targetPiece != null && piece.IsEnemyPiece(targetPiece))
 				{
-					if (CanBeCapturedFrom(targetPiece, piece.BoardPosition, move))
+					if (CanBeCapturedFrom(targetPiece, piece.BoardPosition, move, stateManager))
 					{
 						validMoves.Add(move);
 					}

@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using ChessPlusPlus.Core;
+using ChessPlusPlus.Core.Abilities;
 using Godot;
 
 namespace ChessPlusPlus.Pieces
 {
-	public partial class RangerPawn : Pawn
+	public partial class RangerPawn : Pawn, IMovementModifier
 	{
 		public RangerPawn()
 		{
@@ -12,8 +13,13 @@ namespace ChessPlusPlus.Pieces
 			ClassName = "Ranger";
 		}
 
-		public override List<Vector2I> GetPossibleMoves(Board board)
+		// IMovementModifier implementation
+		public string AbilityName => "Ranger Training";
+		public string Description => "Can always move 2 squares forward and capture diagonally backwards";
+
+		public List<Vector2I> ModifyMovement(Piece piece, Board board, List<Vector2I> standardMoves)
 		{
+			// Start with empty list - we're replacing standard pawn movement
 			var moves = new List<Vector2I>();
 			int direction = Color == PieceColor.White ? 1 : -1;
 
@@ -57,6 +63,13 @@ namespace ChessPlusPlus.Pieces
 			}
 
 			return moves;
+		}
+
+		public override List<Vector2I> GetPossibleMoves(Board board)
+		{
+			// Use the ability system if available, otherwise fall back to direct implementation
+			var baseMoves = base.GetPossibleMoves(board);
+			return ModifyMovement(this, board, baseMoves);
 		}
 	}
 }
