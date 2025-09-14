@@ -13,6 +13,9 @@ namespace ChessPlusPlus.Players
 
 		private TaskCompletionSource<Move?>? currentMoveTask;
 		private NetworkManager? networkManager;
+		private bool isWaitingForMultiMove = false;
+		private int expectedMoveNumber = 1;
+		private int totalExpectedMoves = 1;
 
 		public override void _Ready()
 		{
@@ -113,9 +116,11 @@ namespace ChessPlusPlus.Players
 				return;
 			}
 
+			// Check if this is the opponent's turn
 			if (currentMoveTask == null)
 			{
-				GD.PrintErr("Received network move but not waiting for one!");
+				// We might be in a multi-move situation where we're not expecting a move yet
+				GD.Print($"Received network move from {from} to {to} but not currently waiting");
 				return;
 			}
 
@@ -130,6 +135,8 @@ namespace ChessPlusPlus.Players
 			var capturedPiece = board.GetPieceAt(to);
 			var move = new Move(from, to, piece, capturedPiece);
 			GD.Print($"Received opponent's move: {from} to {to}");
+
+			// Complete this move task
 			currentMoveTask.SetResult(move);
 		}
 

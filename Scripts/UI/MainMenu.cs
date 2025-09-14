@@ -537,15 +537,11 @@ namespace ChessPlusPlus.UI
 		private void OnPlayerConnected(int id)
 		{
 			GD.Print($"Player connected with ID: {id}");
-			connectionStatusLabel.Text = "Player connected!";
+			connectionStatusLabel.Text = "Player connected! Loading setup screen...";
 			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Green);
 
-			// Enable start button for host
-			if (NetworkManager.Instance.IsHost)
-			{
-				startButton.Text = "Start Network Game";
-				startButton.Disabled = false;
-			}
+			// Load LAN setup screen
+			LoadLANSetupScreen();
 		}
 
 		private void OnPlayerDisconnected(int id)
@@ -561,15 +557,11 @@ namespace ChessPlusPlus.UI
 		private void OnConnectionSucceeded()
 		{
 			GD.Print("Successfully connected to host");
-			connectionStatusLabel.Text = "Connected!";
+			connectionStatusLabel.Text = "Connected! Loading setup screen...";
 			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Green);
 
-			// Client waits for host to start
-			startButton.Text = "Waiting for host...";
-			startButton.Disabled = true;
-
-			// Auto-start for client when connected
-			CallDeferred(nameof(StartNetworkGame));
+			// Load LAN setup screen
+			LoadLANSetupScreen();
 		}
 
 		private void OnConnectionFailed()
@@ -589,13 +581,51 @@ namespace ChessPlusPlus.UI
 			connectionStatusLabel.AddThemeColorOverride("font_color", Colors.Red);
 		}
 
+		private void LoadLANSetupScreen()
+		{
+			// Create and show LAN setup screen
+			var lanSetup = new LANSetupScreen();
+			lanSetup.BackToMenu += () =>
+			{
+				lanSetup.QueueFree();
+				Show();
+			};
+			lanSetup.StartLANGame += () =>
+			{
+				// Armies are already set in GameConfig by LANSetupScreen
+				// Just transition to the game scene
+				lanSetup.QueueFree();
+				StartNetworkGame();
+			};
+
+			GetParent().AddChild(lanSetup);
+			Hide();
+		}
+
 		private void StartNetworkGame()
 		{
-			// Set network mode flag (we'll use this in GameManager)
+			// Set network mode flag
 			GameConfig.Instance.Mode = GameMode.PlayerVsPlayer;
 
+			// Armies should already be set by LANSetupScreen
+			// Check if they exist
+			if (!GameConfig.Instance.HasLANArmies())
+			{
+				GD.PrintErr("Warning: LAN armies not set before starting network game!");
+				// Set default armies as fallback
+				GameConfig.Instance.SetLANArmies(new Army(PieceColor.White), new Army(PieceColor.Black));
+			}
+
 			// Load game scene
-			OnStartGame();
+			GameScene = GD.Load<PackedScene>("res://Scenes/game.tscn");
+			if (GameScene != null)
+			{
+				GetTree().ChangeSceneToPacked(GameScene);
+			}
+			else
+			{
+				GD.PrintErr("Failed to load game scene!");
+			}
 		}
 	}
 }

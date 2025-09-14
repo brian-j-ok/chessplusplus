@@ -26,6 +26,8 @@ namespace ChessPlusPlus.Core
 		public AIDifficulty AIDifficulty { get; set; } = AIDifficulty.Medium;
 
 		private Army? customPlayerArmy = null;
+		private Army? lanWhiteArmy = null;
+		private Army? lanBlackArmy = null;
 
 		public static GameConfig Instance { get; private set; } = new GameConfig();
 
@@ -65,6 +67,44 @@ namespace ChessPlusPlus.Core
 		public void ClearCustomArmy()
 		{
 			customPlayerArmy = null;
+		}
+
+		public void SetLANArmies(Army whiteArmy, Army blackArmy)
+		{
+			lanWhiteArmy = whiteArmy;
+			lanBlackArmy = blackArmy;
+			GD.Print($"GameConfig: LAN armies set - White: {whiteArmy != null}, Black: {blackArmy != null}");
+			if (whiteArmy != null)
+			{
+				var whiteComp = whiteArmy.GetArmyComposition();
+				GD.Print($"White army has {whiteComp.Count} piece types");
+			}
+			if (blackArmy != null)
+			{
+				var blackComp = blackArmy.GetArmyComposition();
+				GD.Print($"Black army has {blackComp.Count} piece types");
+			}
+		}
+
+		public Army? GetLANWhiteArmy()
+		{
+			return lanWhiteArmy;
+		}
+
+		public Army? GetLANBlackArmy()
+		{
+			return lanBlackArmy;
+		}
+
+		public bool HasLANArmies()
+		{
+			return lanWhiteArmy != null && lanBlackArmy != null;
+		}
+
+		public void ClearLANArmies()
+		{
+			lanWhiteArmy = null;
+			lanBlackArmy = null;
 		}
 	}
 }

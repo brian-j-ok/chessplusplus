@@ -16,6 +16,8 @@ namespace ChessPlusPlus.Players
 		[Export]
 		public bool IsLocalPlayer { get; set; } = true;
 		private NetworkManager? networkManager;
+		private int currentMoveNumber = 0;
+		private int totalMovesRequired = 1;
 
 		public override void _Ready()
 		{
@@ -38,11 +40,36 @@ namespace ChessPlusPlus.Players
 				// Local player uses normal human input
 				var move = await base.GetNextMoveAsync();
 
-				// Send the move over the network
-				if (move != null && networkManager != null && networkManager.IsConnected)
+				// Check if this is a multi-move piece
+				if (move != null && move.Value.Piece != null)
 				{
-					GD.Print($"Sending move to network: {move.Value.From} to {move.Value.To}");
-					networkManager.SendMove(move.Value.From, move.Value.To);
+					bool isMultiMove = false;
+					int moveNumber = 1;
+					int totalMoves = 1;
+
+					// Check if the piece has multi-move ability
+					if (move.Value.Piece is ChessPlusPlus.Core.Abilities.IMultiMoveAbility multiMoveAbility)
+					{
+						isMultiMove = true;
+						totalMoves = multiMoveAbility.MovesPerTurn;
+
+						// Track current move number for this piece
+						var boardStateManager = board.GetBoardStateManager();
+						if (boardStateManager != null)
+						{
+							var pieceState = boardStateManager.GetPieceState(move.Value.Piece);
+							moveNumber = pieceState.MovesThisTurn + 1;
+						}
+					}
+
+					// Send the move over the network with multi-move info
+					if (networkManager != null && networkManager.IsConnected)
+					{
+						GD.Print(
+							$"Sending move to network: {move.Value.From} to {move.Value.To} (Move {moveNumber}/{totalMoves})"
+						);
+						networkManager.SendMove(move.Value.From, move.Value.To, isMultiMove, moveNumber, totalMoves);
+					}
 				}
 
 				return move;
@@ -52,8 +79,11 @@ namespace ChessPlusPlus.Players
 				// Remote player waits for network move
 				if (currentMoveTask != null)
 				{
-					GD.PrintErr("Already waiting for a move!");
-					return null;
+					// Already waiting - this can happen with multi-moves
+					GD.Print($"Still waiting for opponent's move ({PlayerColor})...");
+					var existingMove = await currentMoveTask.Task;
+					currentMoveTask = null;
+					return existingMove;
 				}
 
 				GD.Print($"Waiting for opponent's move ({PlayerColor})...");

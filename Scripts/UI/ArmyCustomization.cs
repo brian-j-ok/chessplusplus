@@ -46,6 +46,8 @@ namespace ChessPlusPlus.UI
 		[Signal]
 		public delegate void StartCustomGameEventHandler();
 
+		private bool isLANMode = false;
+
 		public override void _Ready()
 		{
 			PieceRegistry.Initialize();
@@ -87,16 +89,27 @@ namespace ChessPlusPlus.UI
 			SquareSize = Mathf.Clamp(availableSpace, MinSquareSize, MaxSquareSize);
 		}
 
-		public void Initialize(PieceColor color)
+		public void Initialize(PieceColor color, bool lanMode = false)
 		{
 			playerColor = color;
 			customArmy = new Army(color);
+			isLANMode = lanMode;
 
 			// Only refresh if UI is already set up
 			if (titleLabel != null)
 			{
 				RefreshDisplay();
+				// Update button text for LAN mode
+				if (isLANMode && startGameButton != null)
+				{
+					startGameButton.Text = "Done";
+				}
 			}
+		}
+
+		public Army GetCustomArmy()
+		{
+			return customArmy;
 		}
 
 		private void SetupUI()
@@ -205,7 +218,7 @@ namespace ChessPlusPlus.UI
 			buttonContainer.AddChild(backButton);
 
 			startGameButton = new Button();
-			startGameButton.Text = "Start Game";
+			startGameButton.Text = isLANMode ? "Done" : "Start Game";
 			startGameButton.CustomMinimumSize = new Vector2(120, 40);
 			startGameButton.Pressed += OnStartGame;
 			buttonContainer.AddChild(startGameButton);
@@ -621,25 +634,33 @@ namespace ChessPlusPlus.UI
 
 		private void OnStartGame()
 		{
-			// Store the custom army in GameConfig for the game scene to use
-			GameConfig.Instance.SetCustomArmy(customArmy);
-
-			// Load and start the game scene directly instead of using signals
-			var gameScene = GD.Load<PackedScene>("res://Scenes/game.tscn");
-			if (gameScene != null)
+			if (isLANMode)
 			{
-				// Get tree reference before removing from tree
-				var tree = GetTree();
-
-				// Remove this scene from the tree first to prevent overlay
-				GetParent()?.RemoveChild(this);
-				QueueFree();
-
-				tree.ChangeSceneToPacked(gameScene);
+				// In LAN mode, just emit signal to return to LANSetupScreen
+				EmitSignal(SignalName.StartCustomGame);
 			}
 			else
 			{
-				GD.PrintErr("Failed to load game scene!");
+				// Single player mode - store army and start game directly
+				GameConfig.Instance.SetCustomArmy(customArmy);
+
+				// Load and start the game scene directly
+				var gameScene = GD.Load<PackedScene>("res://Scenes/game.tscn");
+				if (gameScene != null)
+				{
+					// Get tree reference before removing from tree
+					var tree = GetTree();
+
+					// Remove this scene from the tree first to prevent overlay
+					GetParent()?.RemoveChild(this);
+					QueueFree();
+
+					tree.ChangeSceneToPacked(gameScene);
+				}
+				else
+				{
+					GD.PrintErr("Failed to load game scene!");
+				}
 			}
 		}
 	}

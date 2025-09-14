@@ -2,6 +2,8 @@ namespace ChessPlusPlus.Core
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Linq;
+	using System.Text.Json;
 	using ChessPlusPlus.Pieces;
 	using Godot;
 
@@ -160,6 +162,29 @@ namespace ChessPlusPlus.Core
 			{
 				SetPieceClass(assignment.Type, assignment.Position, assignment.ClassName);
 			}
+		}
+
+		/// <summary>
+		/// Serializes the army configuration to a JSON string for network transmission
+		/// </summary>
+		public string Serialize()
+		{
+			var composition = GetArmyComposition();
+			return JsonSerializer.Serialize(composition);
+		}
+
+		/// <summary>
+		/// Deserializes army configuration from a JSON string
+		/// </summary>
+		public static Army Deserialize(string json, PieceColor color)
+		{
+			var army = new Army(color);
+			var composition = JsonSerializer.Deserialize<List<PieceClassAssignment>>(json);
+			if (composition != null)
+			{
+				army.LoadArmyComposition(composition);
+			}
+			return army;
 		}
 	}
 }

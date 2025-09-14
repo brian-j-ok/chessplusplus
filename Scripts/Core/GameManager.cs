@@ -2,6 +2,7 @@ namespace ChessPlusPlus.Core
 {
 	using System.Threading.Tasks;
 	using ChessPlusPlus.Core.Managers;
+	using ChessPlusPlus.Network;
 	using ChessPlusPlus.Pieces;
 	using Godot;
 
@@ -29,6 +30,12 @@ namespace ChessPlusPlus.Core
 		private GameStateManager gameStateManager = null!;
 		private PlayerManager playerManager = null!;
 		private InputRouter inputRouter = null!;
+		private NetworkStateManager? networkStateManager;
+		private NetworkManager? networkManager;
+
+		// Network sync timer
+		private float networkSyncTimer = 0.0f;
+		private const float NetworkSyncInterval = 0.5f; // Sync every 500ms
 
 		// UI Components
 		private ChessPlusPlus.UI.PromotionDialog? promotionDialog;
@@ -64,9 +71,43 @@ namespace ChessPlusPlus.Core
 			promotionDialog.PieceSelected += OnPromotionPieceSelected;
 			AddChild(promotionDialog);
 
-			// Initialize players and start game
+			// Initialize players
 			playerManager.InitializePlayers(Board, this);
-			StartNewGame();
+
+			// Check if this is a network game that should wait for synchronization
+			if (networkManager != null && networkManager.IsConnected)
+			{
+				GD.Print("Network game detected - checking for LAN armies");
+				// Check if armies have already been set (game started from LANSetupScreen)
+				if (GameConfig.Instance.HasLANArmies())
+				{
+					var whiteArmy = GameConfig.Instance.GetLANWhiteArmy();
+					var blackArmy = GameConfig.Instance.GetLANBlackArmy();
+
+					// Validate armies are not null
+					if (whiteArmy != null && blackArmy != null)
+					{
+						GD.Print("LAN armies found - starting game with custom armies");
+						StartCustomGame(whiteArmy, blackArmy);
+					}
+					else
+					{
+						GD.PrintErr("LAN armies were null! Using standard armies as fallback");
+						StartNewGame();
+					}
+				}
+				else
+				{
+					GD.PrintErr("No LAN armies configured! Using standard armies as fallback");
+					// Start with standard armies instead of waiting
+					StartNewGame();
+				}
+			}
+			else
+			{
+				// Single player or local game - start immediately
+				StartNewGame();
+			}
 		}
 
 		/// <summary>
@@ -94,6 +135,42 @@ namespace ChessPlusPlus.Core
 			inputRouter = new InputRouter();
 			AddChild(inputRouter);
 			inputRouter.Initialize(playerManager, gameStateManager, turnManager);
+
+			// Initialize network components if in network mode
+			InitializeNetworking();
+		}
+
+		/// <summary>
+		/// Initializes networking components if in a network game
+		/// </summary>
+		private void InitializeNetworking()
+		{
+			networkManager = NetworkManager.Instance;
+
+			// Check if we're in a network game
+			if (networkManager != null && networkManager.IsConnected)
+			{
+				GD.Print($"Initializing network state manager. IsHost: {networkManager.IsHost}");
+
+				// Create network state manager
+				networkStateManager = new NetworkStateManager();
+				AddChild(networkStateManager);
+				networkStateManager.Initialize(Board, this, networkManager.IsHost);
+
+				// Connect network events
+				networkManager.GameStateReceived += OnNetworkStateReceived;
+				networkManager.MoveValidationRequested += OnMoveValidationRequested;
+				networkManager.MoveValidationReceived += OnMoveValidationReceived;
+
+				// If we're the host, send initial state after a short delay
+				if (networkManager.IsHost)
+				{
+					GetTree().CreateTimer(0.5).Timeout += () =>
+					{
+						networkStateManager?.BroadcastState();
+					};
+				}
+			}
 		}
 
 		public async void StartNewGame()
@@ -132,7 +209,15 @@ namespace ChessPlusPlus.Core
 			turnManager.Initialize();
 			timerManager.Initialize();
 
-			// TODO: Setup custom armies on board
+			// Setup custom armies on board
+			Board.SetupCustomBoard(whiteArmy, blackArmy);
+
+			// Refresh board orientation
+			var boardVisual = Board.GetBoardVisual();
+			if (boardVisual != null)
+			{
+				boardVisual.RefreshBoardOrientation();
+			}
 
 			// Start playing
 			gameStateManager.StartPlaying();
@@ -147,6 +232,17 @@ namespace ChessPlusPlus.Core
 			if (timerManager != null && turnManager != null && gameStateManager != null)
 			{
 				timerManager.Update((float)delta, turnManager.CurrentTurn, gameStateManager.CurrentState);
+			}
+
+			// Handle network state sync for host
+			if (networkManager != null && networkManager.IsHost && networkStateManager != null)
+			{
+				networkSyncTimer += (float)delta;
+				if (networkSyncTimer >= NetworkSyncInterval)
+				{
+					networkSyncTimer = 0.0f;
+					networkStateManager.BroadcastState();
+				}
 			}
 		}
 
@@ -251,6 +347,9 @@ namespace ChessPlusPlus.Core
 		private void OnPieceMoved(Piece piece, Vector2I from, Vector2I to)
 		{
 			GD.Print($"{piece.Color} {piece.Type} moved from {from} to {to}");
+
+			// Handle network sync if in a network game
+			OnPieceMovedNetwork(piece, from, to);
 		}
 
 		private void OnPieceCaptured(Piece captured, Piece capturer)
@@ -280,6 +379,54 @@ namespace ChessPlusPlus.Core
 			gameStateManager.SetState(GameState.Playing);
 			timerManager.ResumeTimers();
 			EndTurn();
+		}
+
+		// Network event handlers
+		private void OnNetworkStateReceived(string serializedState)
+		{
+			if (networkStateManager != null && !networkManager!.IsHost)
+			{
+				// Clients apply the state from host
+				networkStateManager.OnNetworkStateReceived(serializedState);
+			}
+		}
+
+		private void OnMoveValidationRequested(Vector2I from, Vector2I to, int peerId)
+		{
+			if (networkManager != null && networkManager.IsHost && networkStateManager != null)
+			{
+				// Host validates the move
+				var playerColor = peerId == 1 ? PieceColor.White : PieceColor.Black; // Simplified - need proper mapping
+				bool isValid = networkStateManager.ValidateMove(from, to, playerColor);
+				networkManager.SendMoveValidationResult(peerId, isValid, from, to);
+
+				if (isValid)
+				{
+					// Execute the move if valid
+					Board.MovePiece(from, to);
+				}
+			}
+		}
+
+		private void OnMoveValidationReceived(bool isValid, Vector2I from, Vector2I to)
+		{
+			if (!isValid)
+			{
+				GD.Print($"Move from {from} to {to} was rejected by host");
+				// TODO: Rollback the move or prevent it from executing
+			}
+		}
+
+		/// <summary>
+		/// Called after a piece moves to handle network sync
+		/// </summary>
+		private void OnPieceMovedNetwork(Piece piece, Vector2I from, Vector2I to)
+		{
+			// If we're the host, broadcast the new state after the move
+			if (networkManager != null && networkManager.IsHost && networkStateManager != null)
+			{
+				networkStateManager.BroadcastState();
+			}
 		}
 	}
 }

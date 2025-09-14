@@ -40,6 +40,7 @@ namespace ChessPlusPlus.Core.Abilities
 		private Dictionary<Piece, PieceState> pieceStates = new();
 		private Dictionary<Piece, List<IAbility>> pieceAbilities = new();
 		private Board board = null!;
+		private Piece? lastMovedPiece = null;
 
 		public void Initialize(Board gameBoard)
 		{
@@ -135,6 +136,9 @@ namespace ChessPlusPlus.Core.Abilities
 		/// </summary>
 		public void OnPieceMoved(Piece piece, Vector2I from, Vector2I to)
 		{
+			// Track the last moved piece
+			lastMovedPiece = piece;
+
 			// Track moves for all pieces
 			var state = GetPieceState(piece);
 			state.MovesThisTurn++;
@@ -352,20 +356,13 @@ namespace ChessPlusPlus.Core.Abilities
 		}
 
 		/// <summary>
-		/// Gets the last piece that moved (useful for multi-move tracking)
+		/// Gets the last piece that moved in the current turn
 		/// </summary>
-		public Piece? GetLastMovedPiece(PieceColor color)
+		public Piece? GetLastMovedPiece(PieceColor currentTurn)
 		{
-			foreach (var kvp in pieceStates)
+			if (lastMovedPiece != null && lastMovedPiece.Color == currentTurn)
 			{
-				if (kvp.Key.Color == color && kvp.Value.MovesThisTurn > 0)
-				{
-					// Check if this piece still needs moves
-					if (NeedsAnotherMove(kvp.Key))
-					{
-						return kvp.Key;
-					}
-				}
+				return lastMovedPiece;
 			}
 			return null;
 		}

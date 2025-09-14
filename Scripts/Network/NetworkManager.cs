@@ -50,6 +50,24 @@ namespace ChessPlusPlus.Network
 		[Signal]
 		public delegate void MoveReceivedEventHandler(Vector2I from, Vector2I to);
 
+		[Signal]
+		public delegate void ArmyConfigReceivedEventHandler(string whiteArmyData, string blackArmyData);
+
+		[Signal]
+		public delegate void ColorAssignmentReceivedEventHandler(int hostColor);
+
+		[Signal]
+		public delegate void GameStateReceivedEventHandler(string serializedState);
+
+		[Signal]
+		public delegate void MoveValidationRequestedEventHandler(Vector2I from, Vector2I to, int peerId);
+
+		[Signal]
+		public delegate void MoveValidationReceivedEventHandler(bool isValid, Vector2I from, Vector2I to);
+
+		[Signal]
+		public delegate void ClientReadyReceivedEventHandler(int clientId, string armyData);
+
 		public override void _Ready()
 		{
 			if (instance != null && instance != this)
@@ -152,7 +170,13 @@ namespace ChessPlusPlus.Network
 		/// <summary>
 		/// Send a chess move to the other player
 		/// </summary>
-		public void SendMove(Vector2I from, Vector2I to)
+		public void SendMove(
+			Vector2I from,
+			Vector2I to,
+			bool isMultiMove = false,
+			int moveNumber = 1,
+			int totalMoves = 1
+		)
 		{
 			if (!IsConnected)
 			{
@@ -160,40 +184,98 @@ namespace ChessPlusPlus.Network
 				return;
 			}
 
-			GD.Print($"Sending move: {from} to {to}");
-			Rpc(MethodName.ReceiveMove, from.X, from.Y, to.X, to.Y);
+			GD.Print($"Sending move: {from} to {to} (Move {moveNumber}/{totalMoves})");
+			Rpc(MethodName.ReceiveMove, from.X, from.Y, to.X, to.Y, isMultiMove, moveNumber, totalMoves);
 		}
 
 		/// <summary>
 		/// Receive a chess move from the other player
 		/// </summary>
 		[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
-		private void ReceiveMove(int fromX, int fromY, int toX, int toY)
+		private void ReceiveMove(
+			int fromX,
+			int fromY,
+			int toX,
+			int toY,
+			bool isMultiMove = false,
+			int moveNumber = 1,
+			int totalMoves = 1
+		)
 		{
 			var from = new Vector2I(fromX, fromY);
 			var to = new Vector2I(toX, toY);
 
-			GD.Print($"Received move from network: {from} to {to}");
+			if (isMultiMove)
+			{
+				GD.Print($"Received multi-move from network: {from} to {to} (Move {moveNumber}/{totalMoves})");
+			}
+			else
+			{
+				GD.Print($"Received move from network: {from} to {to}");
+			}
+
 			EmitSignal(SignalName.MoveReceived, from, to);
 		}
 
 		/// <summary>
-		/// Send game state update (check, checkmate, etc.)
+		/// Send complete game state snapshot (host only)
 		/// </summary>
-		public void SendGameState(GameState state)
+		public void SendGameState(string serializedState)
 		{
-			if (!IsConnected)
+			if (!IsConnected || !IsHost)
 				return;
 
-			Rpc(MethodName.ReceiveGameState, (int)state);
+			Rpc(MethodName.ReceiveGameState, serializedState);
+		}
+
+		[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false)]
+		private void ReceiveGameState(string serializedState)
+		{
+			GD.Print($"Received game state snapshot from host");
+			EmitSignal(SignalName.GameStateReceived, serializedState);
+		}
+
+		/// <summary>
+		/// Request move validation from host (client only)
+		/// </summary>
+		public void RequestMoveValidation(Vector2I from, Vector2I to)
+		{
+			if (!IsConnected || IsHost)
+				return;
+
+			RpcId(1, MethodName.ValidateMove, from.X, from.Y, to.X, to.Y);
 		}
 
 		[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
-		private void ReceiveGameState(int stateInt)
+		private void ValidateMove(int fromX, int fromY, int toX, int toY)
 		{
-			var state = (GameState)stateInt;
-			GD.Print($"Received game state: {state}");
-			// Handle game state update
+			if (!IsHost)
+				return;
+
+			var from = new Vector2I(fromX, fromY);
+			var to = new Vector2I(toX, toY);
+
+			// This will be handled by the game manager
+			EmitSignal(SignalName.MoveValidationRequested, from, to, Multiplayer.GetRemoteSenderId());
+		}
+
+		/// <summary>
+		/// Send move validation result (host only)
+		/// </summary>
+		public void SendMoveValidationResult(int peerId, bool isValid, Vector2I from, Vector2I to)
+		{
+			if (!IsHost)
+				return;
+
+			RpcId(peerId, MethodName.ReceiveMoveValidationResult, isValid, from.X, from.Y, to.X, to.Y);
+		}
+
+		[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false)]
+		private void ReceiveMoveValidationResult(bool isValid, int fromX, int fromY, int toX, int toY)
+		{
+			var from = new Vector2I(fromX, fromY);
+			var to = new Vector2I(toX, toY);
+			EmitSignal(SignalName.MoveValidationReceived, isValid, from, to);
 		}
 
 		// Network event handlers
@@ -233,6 +315,81 @@ namespace ChessPlusPlus.Network
 			IsConnected = false;
 			RemotePlayerId = 0;
 			EmitSignal(SignalName.ServerDisconnected);
+		}
+
+		/// <summary>
+		/// Send army configuration to the other player
+		/// </summary>
+		public void SendArmyConfig(string whiteArmyData, string blackArmyData)
+		{
+			if (!IsConnected || !IsHost)
+			{
+				GD.PrintErr("Only host can send army configuration");
+				return;
+			}
+
+			GD.Print($"Sending army configuration to client");
+			GD.Print($"White army data length: {whiteArmyData.Length}");
+			GD.Print($"Black army data length: {blackArmyData.Length}");
+			Rpc(MethodName.ReceiveArmyConfig, whiteArmyData, blackArmyData);
+		}
+
+		[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false)]
+		private void ReceiveArmyConfig(string whiteArmyData, string blackArmyData)
+		{
+			GD.Print("Received army configuration from host");
+			GD.Print($"White army data length: {whiteArmyData.Length}");
+			GD.Print($"Black army data length: {blackArmyData.Length}");
+			EmitSignal(SignalName.ArmyConfigReceived, whiteArmyData, blackArmyData);
+		}
+
+		/// <summary>
+		/// Send color assignment to the other player
+		/// </summary>
+		public void SendColorAssignment(PieceColor hostColor)
+		{
+			if (!IsConnected || !IsHost)
+			{
+				GD.PrintErr("Only host can send color assignment");
+				return;
+			}
+
+			GD.Print($"Sending color assignment: Host plays as {hostColor}");
+			Rpc(MethodName.ReceiveColorAssignment, (int)hostColor);
+		}
+
+		[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false)]
+		private void ReceiveColorAssignment(int hostColorInt)
+		{
+			var hostColor = (PieceColor)hostColorInt;
+			GD.Print($"Received color assignment: Host plays as {hostColor}");
+			EmitSignal(SignalName.ColorAssignmentReceived, (int)hostColor);
+		}
+
+		/// <summary>
+		/// Client sends their army selection and ready status to the host
+		/// </summary>
+		public void SendClientReady(string armyData)
+		{
+			if (!IsConnected || IsHost)
+			{
+				GD.PrintErr("Only client can send ready status");
+				return;
+			}
+
+			GD.Print("Sending ready status and army to host");
+			RpcId(1, MethodName.ReceiveClientReady, armyData);
+		}
+
+		[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+		private void ReceiveClientReady(string armyData)
+		{
+			if (IsHost)
+			{
+				GD.Print("Host received client ready status with army");
+				var senderId = Multiplayer.GetRemoteSenderId();
+				EmitSignal(SignalName.ClientReadyReceived, senderId, armyData);
+			}
 		}
 
 		/// <summary>

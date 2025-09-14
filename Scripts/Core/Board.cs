@@ -46,6 +46,30 @@ namespace ChessPlusPlus.Core
 			}
 		}
 
+		public BoardStateManager? GetBoardStateManager()
+		{
+			return stateManager;
+		}
+
+		public Army? GetWhiteArmy()
+		{
+			return whiteArmy;
+		}
+
+		public Army? GetBlackArmy()
+		{
+			return blackArmy;
+		}
+
+		public void RemovePiece(Vector2I position)
+		{
+			var piece = pieces[position.X, position.Y];
+			if (piece != null)
+			{
+				pieces[position.X, position.Y] = null;
+			}
+		}
+
 		private void InitializeBoard()
 		{
 			// Create board visual
@@ -63,8 +87,17 @@ namespace ChessPlusPlus.Core
 			AddChild(stateManager);
 			stateManager.Initialize(this);
 
-			// Check for custom army from GameConfig
-			if (GameConfig.Instance.HasCustomArmy())
+			// Check for LAN armies first (both players custom)
+			if (GameConfig.Instance.HasLANArmies())
+			{
+				whiteArmy = GameConfig.Instance.GetLANWhiteArmy()!;
+				blackArmy = GameConfig.Instance.GetLANBlackArmy()!;
+				GD.Print("Using LAN custom armies for both players");
+				GD.Print($"White army composition: {whiteArmy.GetArmyComposition().Count} piece types");
+				GD.Print($"Black army composition: {blackArmy.GetArmyComposition().Count} piece types");
+			}
+			// Check for single player custom army
+			else if (GameConfig.Instance.HasCustomArmy())
 			{
 				var customArmy = GameConfig.Instance.GetCustomArmy();
 				if (GameConfig.Instance.PlayerColor == PieceColor.White)
@@ -89,6 +122,14 @@ namespace ChessPlusPlus.Core
 
 		public void SetupStandardBoard()
 		{
+			SetupArmy(PieceColor.White, 0, 1);
+			SetupArmy(PieceColor.Black, 7, 6);
+		}
+
+		public void SetupCustomBoard(Army customWhiteArmy, Army customBlackArmy)
+		{
+			whiteArmy = customWhiteArmy;
+			blackArmy = customBlackArmy;
 			SetupArmy(PieceColor.White, 0, 1);
 			SetupArmy(PieceColor.Black, 7, 6);
 		}

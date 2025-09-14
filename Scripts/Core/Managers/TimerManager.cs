@@ -127,5 +127,47 @@ namespace ChessPlusPlus.Core.Managers
 		{
 			return timersRunning;
 		}
+
+		/// <summary>
+		/// Sets the time for a player (used for network sync)
+		/// </summary>
+		public void SetTime(PieceColor color, float time)
+		{
+			if (color == PieceColor.White)
+			{
+				whiteTimeRemaining = time;
+			}
+			else
+			{
+				blackTimeRemaining = time;
+			}
+			EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
+		}
+
+		/// <summary>
+		/// Starts the timer for a specific player (used for network sync)
+		/// </summary>
+		public void StartTimer(PieceColor color)
+		{
+			timersRunning = true;
+		}
+
+		/// <summary>
+		/// Stops the timer for a specific player (used for network sync)
+		/// </summary>
+		public void StopTimer(PieceColor color)
+		{
+			// For now, we stop all timers when one stops
+			// Could be enhanced to track individual timer states
+			timersRunning = false;
+		}
+
+		/// <summary>
+		/// Checks if a timer is currently active
+		/// </summary>
+		public bool IsTimerActive(PieceColor color)
+		{
+			return timersRunning;
+		}
 	}
 }
