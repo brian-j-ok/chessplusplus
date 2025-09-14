@@ -144,7 +144,10 @@ namespace ChessPlusPlus.Core
 		public override void _Process(double delta)
 		{
 			// Update timers
-			timerManager.Update((float)delta, turnManager.CurrentTurn, gameStateManager.CurrentState);
+			if (timerManager != null && turnManager != null && gameStateManager != null)
+			{
+				timerManager.Update((float)delta, turnManager.CurrentTurn, gameStateManager.CurrentState);
+			}
 		}
 
 		public override void _Input(InputEvent @event)

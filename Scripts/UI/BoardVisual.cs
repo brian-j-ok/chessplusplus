@@ -30,6 +30,9 @@ namespace ChessPlusPlus.UI
 		[Export]
 		public float BoardPadding = 40.0f;
 
+		[Export]
+		public float LeftOffset = 280.0f; // Offset for left sidebar
+
 		public float SquareSize { get; private set; } = 64.0f;
 
 		private ColorRect[,] squares = new ColorRect[8, 8];
@@ -64,8 +67,8 @@ namespace ChessPlusPlus.UI
 		{
 			var viewportSize = GetViewport().GetVisibleRect().Size;
 
-			// Calculate available space for the board (accounting for UI and padding)
-			float availableWidth = viewportSize.X - BoardPadding * 2;
+			// Calculate available space for the board (accounting for sidebar, UI and padding)
+			float availableWidth = viewportSize.X - LeftOffset - BoardPadding * 2;
 			float availableHeight = viewportSize.Y - BoardPadding * 2;
 
 			// Use the smaller dimension to ensure the board fits
@@ -77,9 +80,11 @@ namespace ChessPlusPlus.UI
 			// Clamp to min/max values
 			SquareSize = Mathf.Clamp(calculatedSize, MinSquareSize, MaxSquareSize);
 
-			// Center the board in the viewport
+			// Center the board in the available space (accounting for sidebar)
 			float boardSize = SquareSize * 8;
-			Position = new Vector2((viewportSize.X - boardSize) * 0.5f, (viewportSize.Y - boardSize) * 0.5f);
+			float xPos = LeftOffset + (availableWidth - boardSize) * 0.5f + BoardPadding;
+			float yPos = (viewportSize.Y - boardSize) * 0.5f;
+			Position = new Vector2(xPos, yPos);
 		}
 
 		public void RefreshBoardOrientation()

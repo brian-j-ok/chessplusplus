@@ -14,7 +14,5 @@ script = ExtResource("2_qxrlw")
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="GameUI" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 0
+[node name="GameUI" type="CanvasLayer" parent="."]
 script = ExtResource("3_gameui")

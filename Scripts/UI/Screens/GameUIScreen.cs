@@ -1,7 +1,6 @@
 using ChessPlusPlus.Core;
-using ChessPlusPlus.Core.Managers;
-using ChessPlusPlus.Pieces;
 using ChessPlusPlus.UI.Builders;
+using ChessPlusPlus.UI.Components;
 using Godot;
 using ColorPalette = ChessPlusPlus.UI.Styles.ColorPalette;
 using StylePresets = ChessPlusPlus.UI.Styles.StylePresets;
@@ -11,140 +10,66 @@ namespace ChessPlusPlus.UI.Screens
 {
 	public partial class GameUIScreen : Control
 	{
-		private Label? whiteTimerLabel;
-		private Label? blackTimerLabel;
-		private Label? turnIndicatorLabel;
-		private GameManager? gameManager;
-		private TimerManager? timerManager;
-		private TurnManager? turnManager;
+		private HBoxContainer? mainContainer;
+		private LeftSidebarPanel? leftSidebar;
+		private GameInfoPanel? gameInfoPanel;
+		private Control? boardContainer;
+		private const float SIDEBAR_WIDTH = 280f;
 
 		public override void _Ready()
 		{
 			BuildUI();
-			ConnectToManagers();
 		}
 
 		private void BuildUI()
 		{
-			var mainContainer = UIBuilder
-				.VBox()
-				.Position(10, 10)
-				.Spacing(StylePresets.Spacing.Medium)
-				.Children(BuildTurnIndicator(), UIBuilder.Spacer(0, StylePresets.Spacing.Large), BuildTimerPanel())
-				.AddTo(this);
+			// Set up full screen layout
+			SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+			// Create horizontal box container for layout
+			mainContainer = UIBuilder.HBox().Spacing(0).Build();
+			mainContainer.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+			AddChild(mainContainer);
+
+			// Create and add left sidebar
+			leftSidebar = new LeftSidebarPanel();
+			leftSidebar.CustomMinimumSize = new Vector2(SIDEBAR_WIDTH, 0);
+			leftSidebar.SizeFlagsHorizontal = Control.SizeFlags.Fill;
+			leftSidebar.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+			mainContainer.AddChild(leftSidebar);
+
+			// Add game info panel to sidebar
+			gameInfoPanel = new GameInfoPanel();
+			leftSidebar.AddSection(gameInfoPanel);
+
+			// Add separator
+			leftSidebar.AddSeparator();
+
+			// Create board container
+			boardContainer = UIBuilder.Panel().Background(ColorPalette.BackgroundMedium).Build();
+			boardContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			boardContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+			mainContainer.AddChild(boardContainer);
 		}
 
-		private Control BuildTurnIndicator()
+		public void AddSidebarSection(Control section)
 		{
-			turnIndicatorLabel = UIBuilder
-				.Label("Current Turn: White")
-				.FontSize(StylePresets.FontSizes.Large)
-				.FontColor(ColorPalette.TextPrimary)
-				.Build();
-
-			return turnIndicatorLabel;
+			leftSidebar?.AddSection(section);
 		}
 
-		private Control BuildTimerPanel()
+		public void AddSidebarSeparator()
 		{
-			return UIBuilder
-				.HBox()
-				.Spacing(StylePresets.Spacing.ExtraLarge)
-				.Children(
-					BuildPlayerTimer("White", ColorPalette.WhitePlayer, out whiteTimerLabel),
-					BuildPlayerTimer("Black", ColorPalette.BlackPlayer, out blackTimerLabel)
-				)
-				.Build();
+			leftSidebar?.AddSeparator();
 		}
 
-		private Control BuildPlayerTimer(string playerName, Color timerColor, out Label timerLabel)
+		public Control? GetBoardContainer()
 		{
-			var nameLabel = UIBuilder
-				.Label(playerName)
-				.FontSize(StylePresets.FontSizes.Medium)
-				.FontColor(ColorPalette.TextSecondary)
-				.Build();
-
-			timerLabel = UIBuilder.Label("10:00").FontSize(StylePresets.FontSizes.Huge).FontColor(timerColor).Build();
-
-			return UIBuilder.VBox().Spacing(StylePresets.Spacing.Small).Children(nameLabel, timerLabel).Build();
-		}
-
-		private void ConnectToManagers()
-		{
-			// Find and connect to GameManager and its managers
-			gameManager = GetNode<GameManager>("/root/Game");
-			if (gameManager != null)
-			{
-				timerManager = gameManager.TimerManager;
-				turnManager = gameManager.TurnManager;
-
-				if (timerManager != null)
-				{
-					timerManager.TimerUpdated += OnTimerUpdated;
-				}
-
-				if (turnManager != null)
-				{
-					turnManager.TurnChanged += (turnInt) => OnTurnChanged((PieceColor)turnInt);
-				}
-			}
-		}
-
-		private void OnTimerUpdated(float whiteTime, float blackTime)
-		{
-			if (whiteTimerLabel != null)
-			{
-				whiteTimerLabel.Text = FormatTime(whiteTime);
-			}
-
-			if (blackTimerLabel != null)
-			{
-				blackTimerLabel.Text = FormatTime(blackTime);
-			}
-		}
-
-		private void OnTurnChanged(PieceColor turn)
-		{
-			if (turnIndicatorLabel != null)
-			{
-				turnIndicatorLabel.Text = $"Current Turn: {turn}";
-
-				// Highlight active timer
-				if (whiteTimerLabel != null && blackTimerLabel != null)
-				{
-					if (turn == PieceColor.White)
-					{
-						whiteTimerLabel.AddThemeColorOverride("font_color", ColorPalette.TextAccent);
-						blackTimerLabel.AddThemeColorOverride("font_color", ColorPalette.BlackPlayer);
-					}
-					else
-					{
-						whiteTimerLabel.AddThemeColorOverride("font_color", ColorPalette.WhitePlayer);
-						blackTimerLabel.AddThemeColorOverride("font_color", ColorPalette.TextAccent);
-					}
-				}
-			}
-		}
-
-		private string FormatTime(float seconds)
-		{
-			int minutes = (int)(seconds / 60);
-			int secs = (int)(seconds % 60);
-			return $"{minutes:D2}:{secs:D2}";
+			return boardContainer;
 		}
 
 		public override void _ExitTree()
 		{
-			if (timerManager != null)
-			{
-				timerManager.TimerUpdated -= OnTimerUpdated;
-			}
-
-			if (turnManager != null)
-			{
-				// TurnChanged unsubscribe is handled by Godot's lifecycle
-			}
+			// Cleanup is handled by child components
 		}
 	}
 }

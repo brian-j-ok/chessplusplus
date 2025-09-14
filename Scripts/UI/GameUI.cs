@@ -1,143 +1,69 @@
-using ChessPlusPlus.Core;
-using ChessPlusPlus.Pieces;
+using ChessPlusPlus.UI.Components;
 using Godot;
 
 namespace ChessPlusPlus.UI
 {
-	public partial class GameUI : Control
+	public partial class GameUI : CanvasLayer
 	{
-		private Label? whiteTimerLabel;
-		private Label? blackTimerLabel;
-		private Label? turnIndicatorLabel;
-		private GameManager? gameManager;
-		private ChessPlusPlus.Core.Managers.TimerManager? timerManager;
-		private ChessPlusPlus.Core.Managers.TurnManager? turnManager;
+		private Control? uiRoot;
+		private HBoxContainer? mainContainer;
+		private LeftSidebarPanel? leftSidebar;
+		private GameInfoPanel? gameInfoPanel;
+		private const float SIDEBAR_WIDTH = 280f;
 
 		public override void _Ready()
 		{
-			// Create UI container
-			var vbox = new VBoxContainer();
-			vbox.Position = new Vector2(10, 10);
-			AddChild(vbox);
+			// Create root control for UI (following Godot best practice)
+			uiRoot = new Control();
+			uiRoot.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+			AddChild(uiRoot);
 
-			// Create turn indicator
-			turnIndicatorLabel = new Label();
-			turnIndicatorLabel.Text = "Current Turn: White";
-			turnIndicatorLabel.AddThemeStyleboxOverride("normal", new StyleBoxFlat());
-			turnIndicatorLabel.AddThemeFontSizeOverride("font_size", 24);
-			vbox.AddChild(turnIndicatorLabel);
+			// Create horizontal container for layout
+			mainContainer = new HBoxContainer();
+			mainContainer.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+			mainContainer.AddThemeConstantOverride("separation", 0);
+			uiRoot.AddChild(mainContainer);
 
-			// Add spacing
-			vbox.AddChild(new Control() { CustomMinimumSize = new Vector2(0, 20) });
+			// Create and add left sidebar
+			leftSidebar = new LeftSidebarPanel();
+			leftSidebar.CustomMinimumSize = new Vector2(SIDEBAR_WIDTH, 0);
+			leftSidebar.SizeFlagsHorizontal = Control.SizeFlags.Fill;
+			leftSidebar.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+			mainContainer.AddChild(leftSidebar);
 
-			// Create timer container
-			var timerContainer = new HBoxContainer();
-			timerContainer.AddThemeConstantOverride("separation", 50);
-			vbox.AddChild(timerContainer);
+			// Create and add game info panel to sidebar
+			gameInfoPanel = new GameInfoPanel();
+			leftSidebar.AddSection(gameInfoPanel);
 
-			// White timer
-			var whiteContainer = new VBoxContainer();
-			timerContainer.AddChild(whiteContainer);
+			// Add separator after game info
+			leftSidebar.AddSeparator();
 
-			var whiteLabel = new Label();
-			whiteLabel.Text = "White";
-			whiteLabel.AddThemeFontSizeOverride("font_size", 18);
-			whiteContainer.AddChild(whiteLabel);
+			// Create a transparent panel for the board area
+			// This reserves space in the layout but doesn't render anything
+			var boardAreaSpacer = new Panel();
+			boardAreaSpacer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			boardAreaSpacer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+			boardAreaSpacer.MouseFilter = Control.MouseFilterEnum.Ignore;
+			boardAreaSpacer.Modulate = new Color(1, 1, 1, 0); // Fully transparent
+			mainContainer.AddChild(boardAreaSpacer);
 
-			whiteTimerLabel = new Label();
-			whiteTimerLabel.Text = "10:00";
-			whiteTimerLabel.AddThemeFontSizeOverride("font_size", 28);
-			whiteTimerLabel.AddThemeColorOverride("font_color", Colors.White);
-			whiteContainer.AddChild(whiteTimerLabel);
-
-			// Black timer
-			var blackContainer = new VBoxContainer();
-			timerContainer.AddChild(blackContainer);
-
-			var blackLabel = new Label();
-			blackLabel.Text = "Black";
-			blackLabel.AddThemeFontSizeOverride("font_size", 18);
-			blackContainer.AddChild(blackLabel);
-
-			blackTimerLabel = new Label();
-			blackTimerLabel.Text = "10:00";
-			blackTimerLabel.AddThemeFontSizeOverride("font_size", 28);
-			blackTimerLabel.AddThemeColorOverride("font_color", Colors.DarkGray);
-			blackContainer.AddChild(blackTimerLabel);
-
-			// Find and connect to GameManager and its managers
-			gameManager = GetNode<GameManager>("/root/Game");
-			if (gameManager != null)
-			{
-				timerManager = gameManager.TimerManager;
-				turnManager = gameManager.TurnManager;
-
-				if (timerManager != null)
-				{
-					timerManager.TimerUpdated += OnTimerUpdated;
-				}
-
-				if (turnManager != null)
-				{
-					turnManager.TurnChanged += (turnInt) => OnTurnChanged((PieceColor)turnInt);
-				}
-			}
+			// The Board (Node2D) will handle its own positioning via BoardVisual
+			// which now knows about the sidebar offset
 		}
 
-		private void OnTimerUpdated(float whiteTime, float blackTime)
+		public void AddSidebarSection(Control section)
 		{
-			if (whiteTimerLabel != null)
-			{
-				whiteTimerLabel.Text = FormatTime(whiteTime);
-			}
-
-			if (blackTimerLabel != null)
-			{
-				blackTimerLabel.Text = FormatTime(blackTime);
-			}
+			leftSidebar?.AddSection(section);
 		}
 
-		private void OnTurnChanged(PieceColor turn)
+		public void AddSidebarSeparator()
 		{
-			if (turnIndicatorLabel != null)
-			{
-				turnIndicatorLabel.Text = $"Current Turn: {turn}";
-
-				// Highlight active timer
-				if (whiteTimerLabel != null && blackTimerLabel != null)
-				{
-					if (turn == PieceColor.White)
-					{
-						whiteTimerLabel.AddThemeColorOverride("font_color", Colors.Yellow);
-						blackTimerLabel.AddThemeColorOverride("font_color", Colors.DarkGray);
-					}
-					else
-					{
-						whiteTimerLabel.AddThemeColorOverride("font_color", Colors.White);
-						blackTimerLabel.AddThemeColorOverride("font_color", Colors.Yellow);
-					}
-				}
-			}
-		}
-
-		private string FormatTime(float seconds)
-		{
-			int minutes = (int)(seconds / 60);
-			int secs = (int)(seconds % 60);
-			return $"{minutes:D2}:{secs:D2}";
+			leftSidebar?.AddSeparator();
 		}
 
 		public override void _ExitTree()
 		{
-			if (timerManager != null)
-			{
-				timerManager.TimerUpdated -= OnTimerUpdated;
-			}
-
-			if (turnManager != null)
-			{
-				// TurnChanged unsubscribe is handled by Godot's lifecycle
-			}
+			// Cleanup is handled by child components
 		}
 	}
 }

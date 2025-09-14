@@ -33,6 +33,7 @@ namespace ChessPlusPlus.Core.Managers
 			blackTimeRemaining = InitialTimeSeconds;
 			timersRunning = true;
 			EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
+			GD.Print($"TimerManager initialized with {InitialTimeSeconds} seconds per player");
 		}
 
 		/// <summary>
