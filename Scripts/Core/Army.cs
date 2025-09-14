@@ -127,12 +127,20 @@ namespace ChessPlusPlus.Core
 
 		private Piece CreateQueen(string className)
 		{
-			return new Queen();
+			return className switch
+			{
+				"Glass" => new GlassQueen(),
+				_ => new Queen(),
+			};
 		}
 
 		private Piece CreateKing(string className)
 		{
-			return new King();
+			return className switch
+			{
+				"Resurrecting" => new ResurrectingKing(),
+				_ => new King(),
+			};
 		}
 
 		public List<PieceClassAssignment> GetArmyComposition()

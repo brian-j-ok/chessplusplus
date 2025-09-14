@@ -115,4 +115,35 @@ namespace ChessPlusPlus.Core.Abilities
 		/// </summary>
 		bool ShouldEnd(Piece source, Board board);
 	}
+
+	/// <summary>
+	/// Ability for pieces that can or must move multiple times per turn
+	/// </summary>
+	public interface IMultiMoveAbility : IAbility
+	{
+		/// <summary>
+		/// Number of moves required/allowed per turn
+		/// </summary>
+		int MovesPerTurn { get; }
+
+		/// <summary>
+		/// Whether the additional moves are mandatory
+		/// </summary>
+		bool MandatoryMoves { get; }
+
+		/// <summary>
+		/// Called after each move to update internal state
+		/// </summary>
+		void OnMoveCompleted(int moveNumber, Vector2I from, Vector2I to, Board board);
+
+		/// <summary>
+		/// Checks if the piece can end its turn
+		/// </summary>
+		bool CanEndTurn(int movesMade);
+
+		/// <summary>
+		/// Resets the move counter for a new turn
+		/// </summary>
+		void ResetMoveCounter();
+	}
 }

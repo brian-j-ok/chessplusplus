@@ -176,6 +176,23 @@ namespace ChessPlusPlus.Core
 
 			if (moveExecuted)
 			{
+				// Check if the piece that moved needs more moves this turn
+				var stateManager = Board.GetStateManager();
+				if (stateManager != null)
+				{
+					var lastMovedPiece = stateManager.GetLastMovedPiece(turnManager.CurrentTurn);
+					if (lastMovedPiece != null && stateManager.NeedsAnotherMove(lastMovedPiece))
+					{
+						GD.Print($"{lastMovedPiece.Color} {lastMovedPiece.Type} needs to move again!");
+						// Continue with the same player's turn
+						await ProcessNextTurn();
+						return;
+					}
+				}
+
+				// All moves complete for this turn - check for auto-captures before ending turn
+				Board.ProcessAutoCaptures();
+
 				EndTurn();
 			}
 		}
@@ -183,7 +200,7 @@ namespace ChessPlusPlus.Core
 		private async void EndTurn()
 		{
 			// End the current turn
-			turnManager.EndTurn();
+			turnManager.EndTurn(Board);
 
 			// Add timer increment if applicable
 			var previousTurn = turnManager.CurrentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;

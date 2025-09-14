@@ -60,6 +60,34 @@ namespace ChessPlusPlus.Players
 
 			var clickedPiece = board.GetPieceAt(boardPos);
 
+			// Check if a piece is mid-move (needs another move)
+			var stateManager = board.GetStateManager();
+			if (stateManager != null)
+			{
+				var pieceNeedingMove = stateManager.GetLastMovedPiece(PlayerColor);
+				if (pieceNeedingMove != null && stateManager.NeedsAnotherMove(pieceNeedingMove))
+				{
+					// Only allow selecting the piece that needs to continue moving
+					if (clickedPiece == pieceNeedingMove)
+					{
+						SelectPiece(clickedPiece, boardPos);
+						return;
+					}
+					else if (selectedPiece == pieceNeedingMove)
+					{
+						// Allow making the next move
+						TryMakeMove(boardPos);
+						return;
+					}
+					else
+					{
+						GD.Print($"{pieceNeedingMove.Color} {pieceNeedingMove.Type} must complete its move sequence!");
+						return;
+					}
+				}
+			}
+
+			// Normal piece selection flow
 			if (selectedPiece == null)
 			{
 				if (clickedPiece != null && clickedPiece.Color == PlayerColor)

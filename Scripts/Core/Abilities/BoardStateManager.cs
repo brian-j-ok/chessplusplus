@@ -13,6 +13,9 @@ namespace ChessPlusPlus.Core.Abilities
 		public bool IsFrozen { get; set; }
 		public Piece? FrozenBy { get; set; }
 		public int FrozenDuration { get; set; }
+		public int MovesThisTurn { get; set; } = 0;
+		public bool RequiresDoubleMove { get; set; } = false;
+		public bool PendingAutoCapture { get; set; } = false;
 		public Dictionary<string, object> CustomStates { get; set; } = new();
 
 		public void ClearFrozenState()
@@ -20,6 +23,12 @@ namespace ChessPlusPlus.Core.Abilities
 			IsFrozen = false;
 			FrozenBy = null;
 			FrozenDuration = 0;
+		}
+
+		public void ResetTurnState()
+		{
+			MovesThisTurn = 0;
+			PendingAutoCapture = false;
 		}
 	}
 
@@ -61,6 +70,12 @@ namespace ChessPlusPlus.Core.Abilities
 				abilities.Add(passiveAbility);
 			if (piece is IBoardEffect boardEffect)
 				abilities.Add(boardEffect);
+			if (piece is IMultiMoveAbility multiMove)
+			{
+				abilities.Add(multiMove);
+				// Set the state for multi-move pieces
+				pieceStates[piece].RequiresDoubleMove = multiMove.MandatoryMoves && multiMove.MovesPerTurn > 1;
+			}
 
 			if (abilities.Count > 0)
 			{
@@ -120,6 +135,36 @@ namespace ChessPlusPlus.Core.Abilities
 		/// </summary>
 		public void OnPieceMoved(Piece piece, Vector2I from, Vector2I to)
 		{
+			// Track moves for all pieces
+			var state = GetPieceState(piece);
+			state.MovesThisTurn++;
+
+			// Handle multi-move abilities
+			if (piece is IMultiMoveAbility multiMove)
+			{
+				multiMove.OnMoveCompleted(state.MovesThisTurn, from, to, board);
+
+				// For GlassQueen, check vulnerability after each move but only mark for capture after final move
+				if (piece is GlassQueen glassQueen)
+				{
+					if (glassQueen.ShouldShatter(board))
+					{
+						// Only mark for auto-capture if this is the final move
+						if (multiMove.CanEndTurn(state.MovesThisTurn))
+						{
+							state.PendingAutoCapture = true;
+							GD.Print(
+								$"GlassQueen at {to} marked for auto-capture (exposed after move {state.MovesThisTurn})!"
+							);
+						}
+						else
+						{
+							GD.Print($"WARNING: GlassQueen exposed at {to} but has more moves to escape!");
+						}
+					}
+				}
+			}
+
 			// Trigger all passive abilities
 			foreach (var kvp in pieceAbilities)
 			{
@@ -164,6 +209,21 @@ namespace ChessPlusPlus.Core.Abilities
 		/// </summary>
 		public void OnTurnStart(PieceColor currentTurn)
 		{
+			// Reset turn-based states for pieces of the current color
+			foreach (var kvp in pieceStates)
+			{
+				if (kvp.Key.Color == currentTurn)
+				{
+					kvp.Value.ResetTurnState();
+
+					// Reset multi-move abilities
+					if (kvp.Key is IMultiMoveAbility multiMove)
+					{
+						multiMove.ResetMoveCounter();
+					}
+				}
+			}
+
 			// Update duration-based effects
 			foreach (var state in pieceStates.Values)
 			{
@@ -276,6 +336,54 @@ namespace ChessPlusPlus.Core.Abilities
 
 			pieceStates.Remove(piece);
 			pieceAbilities.Remove(piece);
+		}
+
+		/// <summary>
+		/// Checks if a piece needs to make another move this turn
+		/// </summary>
+		public bool NeedsAnotherMove(Piece piece)
+		{
+			if (piece is IMultiMoveAbility multiMove)
+			{
+				var state = GetPieceState(piece);
+				return !multiMove.CanEndTurn(state.MovesThisTurn);
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Gets the last piece that moved (useful for multi-move tracking)
+		/// </summary>
+		public Piece? GetLastMovedPiece(PieceColor color)
+		{
+			foreach (var kvp in pieceStates)
+			{
+				if (kvp.Key.Color == color && kvp.Value.MovesThisTurn > 0)
+				{
+					// Check if this piece still needs moves
+					if (NeedsAnotherMove(kvp.Key))
+					{
+						return kvp.Key;
+					}
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Checks if any pieces have pending auto-capture
+		/// </summary>
+		public List<Piece> GetPiecesWithPendingAutoCapture()
+		{
+			var pieces = new List<Piece>();
+			foreach (var kvp in pieceStates)
+			{
+				if (kvp.Value.PendingAutoCapture)
+				{
+					pieces.Add(kvp.Key);
+				}
+			}
+			return pieces;
 		}
 
 		/// <summary>

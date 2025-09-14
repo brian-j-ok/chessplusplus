@@ -143,6 +143,10 @@ namespace ChessPlusPlus.Core
 					"Freezes enemy pieces that land adjacent until this bishop moves",
 				"Bombing" when pieceType == PieceType.Rook =>
 					"Can capture enemies one square beyond normal range by throwing bombs",
+				"Resurrecting" when pieceType == PieceType.King =>
+					"Once per game, when checkmated, can teleport to a random safe square",
+				"Glass" when pieceType == PieceType.Queen =>
+					"Must move twice per turn but shatters if exposed to horizontal threats",
 				_ => $"{className} variant of {pieceType.ToString().ToLower()}",
 			};
 		}

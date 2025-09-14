@@ -224,6 +224,8 @@ private static string GenerateDescription(string className, string typeName, Pie
 ### Complex Abilities
 - **FreezingBishop**: Freezes enemy pieces that land adjacent until the bishop moves
 - **BombingRook**: Can capture enemies one square beyond normal range by throwing bombs
+- **ResurrectingKing**: Once per game, when checkmated, can teleport to a random safe square
+- **GlassQueen**: Must move twice per turn but shatters if exposed to horizontal threats
 
 ## State Management
 
@@ -232,6 +234,9 @@ The `BoardStateManager` tracks piece states including:
 - **Frozen State**: Pieces unable to move
 - **Effect Sources**: Which piece is causing an effect
 - **Effect Duration**: How long effects last
+- **Move Tracking**: Number of moves made this turn (for multi-move pieces)
+- **Double Move Requirement**: Tracks pieces that must move twice per turn
+- **Auto-Capture Pending**: Marks pieces for automatic capture
 - **Custom States**: Extensible dictionary for new state types
 
 ### PieceState Class
@@ -242,6 +247,9 @@ public class PieceState
     public bool IsFrozen { get; set; }
     public Piece? FrozenBy { get; set; }
     public int FrozenDuration { get; set; }
+    public int MovesThisTurn { get; set; }
+    public bool RequiresDoubleMove { get; set; }
+    public bool PendingAutoCapture { get; set; }
     public Dictionary<string, object> CustomStates { get; set; }
 }
 ```

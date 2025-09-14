@@ -199,6 +199,27 @@ namespace ChessPlusPlus.Core
 			captured.OnCaptured(this);
 		}
 
+		/// <summary>
+		/// Auto-captures a piece (used for special abilities like GlassQueen shattering)
+		/// </summary>
+		public void AutoCapturePiece(Piece pieceToCapture)
+		{
+			if (pieceToCapture == null)
+				return;
+
+			var position = pieceToCapture.BoardPosition;
+			pieces[position.X, position.Y] = null;
+
+			// Unregister from state manager
+			stateManager?.UnregisterPiece(pieceToCapture);
+
+			GD.Print($"{pieceToCapture.Color} {pieceToCapture.Type} at {position} was auto-captured!");
+
+			// For auto-capture, the capturer is considered to be the piece itself (self-destruction)
+			EmitSignal(SignalName.PieceCaptured, pieceToCapture, pieceToCapture);
+			pieceToCapture.OnCaptured(this);
+		}
+
 		public Piece? GetPieceAt(Vector2I position)
 		{
 			if (!IsValidPosition(position))
@@ -411,6 +432,26 @@ namespace ChessPlusPlus.Core
 		public void OnTurnStart(PieceColor currentTurn)
 		{
 			stateManager?.OnTurnStart(currentTurn);
+		}
+
+		/// <summary>
+		/// Checks for and executes any pending auto-captures (like GlassQueen shattering)
+		/// </summary>
+		public void ProcessAutoCaptures()
+		{
+			if (stateManager == null)
+				return;
+
+			var piecesToCapture = stateManager.GetPiecesWithPendingAutoCapture();
+			foreach (var piece in piecesToCapture)
+			{
+				// Double-check if piece should still be captured (in case board state changed)
+				if (piece is GlassQueen glassQueen && glassQueen.ShouldShatter(this))
+				{
+					GD.Print($"GlassQueen at {piece.BoardPosition} shatters due to horizontal exposure!");
+					AutoCapturePiece(piece);
+				}
+			}
 		}
 	}
 }
