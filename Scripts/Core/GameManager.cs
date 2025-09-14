@@ -1,7 +1,9 @@
 namespace ChessPlusPlus.Core
 {
 	using ChessPlusPlus.Pieces;
+	using ChessPlusPlus.Players;
 	using Godot;
+	using System.Threading.Tasks;
 	public enum GameState
 	{
 		Setup,
@@ -19,9 +21,12 @@ namespace ChessPlusPlus.Core
 		public PieceColor CurrentTurn { get; private set; } = PieceColor.White;
 		public GameState State { get; private set; } = GameState.Setup;
 
-		private Piece? selectedPiece;
-		private Vector2I selectedPosition;
+		private PlayerController? whitePlayer;
+		private PlayerController? blackPlayer;
+		private PlayerController? currentPlayer;
+		private HumanPlayerController? humanPlayer;
 		private ChessPlusPlus.UI.PromotionDialog? promotionDialog;
+		private bool isProcessingTurn = false;
 
 		// Timer properties
 		private float whiteTimeRemaining = 600.0f; // 10 minutes in seconds
@@ -58,10 +63,83 @@ namespace ChessPlusPlus.Core
 			promotionDialog.PieceSelected += OnPromotionPieceSelected;
 			AddChild(promotionDialog);
 
+			InitializePlayers();
 			StartNewGame();
 		}
 
-		public void StartNewGame()
+		private void InitializePlayers()
+		{
+			// Clean up existing players
+			if (whitePlayer != null)
+			{
+				whitePlayer.QueueFree();
+				whitePlayer = null;
+			}
+			if (blackPlayer != null)
+			{
+				blackPlayer.QueueFree();
+				blackPlayer = null;
+			}
+
+			var config = GameConfig.Instance;
+			GD.Print($"Initializing players for mode: {config.Mode}");
+
+			switch (config.Mode)
+			{
+				case GameMode.PlayerVsPlayer:
+					// Dev mode: both sides controlled by same human player
+					whitePlayer = CreateHumanPlayer(PieceColor.White);
+					blackPlayer = CreateHumanPlayer(PieceColor.Black);
+					// Set humanPlayer to the current turn's controller
+					humanPlayer = whitePlayer as HumanPlayerController;
+					break;
+
+				case GameMode.PlayerVsAI:
+					if (config.PlayerColor == PieceColor.White)
+					{
+						whitePlayer = CreateHumanPlayer(PieceColor.White);
+						blackPlayer = CreateAIPlayer(PieceColor.Black, config.AIDifficulty);
+						humanPlayer = whitePlayer as HumanPlayerController;
+					}
+					else
+					{
+						whitePlayer = CreateAIPlayer(PieceColor.White, config.AIDifficulty);
+						blackPlayer = CreateHumanPlayer(PieceColor.Black);
+						humanPlayer = blackPlayer as HumanPlayerController;
+					}
+					break;
+
+				case GameMode.AIVsAI:
+					whitePlayer = CreateAIPlayer(PieceColor.White, config.AIDifficulty);
+					blackPlayer = CreateAIPlayer(PieceColor.Black, config.AIDifficulty);
+					humanPlayer = null;
+					break;
+			}
+
+			whitePlayer?.Initialize(Board, this);
+			blackPlayer?.Initialize(Board, this);
+		}
+
+		private HumanPlayerController CreateHumanPlayer(PieceColor color)
+		{
+			var player = new HumanPlayerController();
+			player.PlayerColor = color;
+			player.PlayerName = $"Human ({color})";
+			AddChild(player);
+			return player;
+		}
+
+		private AIPlayerController CreateAIPlayer(PieceColor color, AIDifficulty difficulty)
+		{
+			var player = new AIPlayerController();
+			player.PlayerColor = color;
+			player.Difficulty = difficulty;
+			player.PlayerName = $"AI ({color}, {difficulty})";
+			AddChild(player);
+			return player;
+		}
+
+		public async void StartNewGame()
 		{
 			State = GameState.Setup;
 			CurrentTurn = PieceColor.White;
@@ -91,9 +169,12 @@ namespace ChessPlusPlus.Core
 			EmitSignal(SignalName.GameStateChanged, (int)State);
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);
 			EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
+
+			// Start the first turn
+			await ProcessNextTurn();
 		}
 
-		public void StartCustomGame(Army whiteArmy, Army blackArmy)
+		public async void StartCustomGame(Army whiteArmy, Army blackArmy)
 		{
 			State = GameState.Setup;
 			CurrentTurn = PieceColor.White;
@@ -107,6 +188,9 @@ namespace ChessPlusPlus.Core
 			EmitSignal(SignalName.GameStateChanged, (int)State);
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);
 			EmitSignal(SignalName.TimerUpdated, whiteTimeRemaining, blackTimeRemaining);
+
+			// Start the first turn
+			await ProcessNextTurn();
 		}
 
 		public override void _Process(double delta)
@@ -149,87 +233,101 @@ namespace ChessPlusPlus.Core
 
 			if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
 			{
-				if (mouseButton.ButtonIndex == MouseButton.Left)
+				// In dev mode, route to the current player
+				if (GameConfig.Instance.Mode == GameMode.PlayerVsPlayer)
 				{
-					HandleBoardClick(mouseButton.Position);
+					var currentHumanPlayer = CurrentTurn == PieceColor.White ?
+						whitePlayer as HumanPlayerController :
+						blackPlayer as HumanPlayerController;
+
+					if (mouseButton.ButtonIndex == MouseButton.Left)
+					{
+						currentHumanPlayer?.HandleBoardClick(mouseButton.Position);
+					}
+					else if (mouseButton.ButtonIndex == MouseButton.Right)
+					{
+						currentHumanPlayer?.ClearSelection();
+					}
 				}
-				else if (mouseButton.ButtonIndex == MouseButton.Right)
+				else
 				{
-					ClearSelection();
+					// In other modes, route to the single human player
+					if (mouseButton.ButtonIndex == MouseButton.Left)
+					{
+						humanPlayer?.HandleBoardClick(mouseButton.Position);
+					}
+					else if (mouseButton.ButtonIndex == MouseButton.Right)
+					{
+						humanPlayer?.ClearSelection();
+					}
 				}
 			}
 		}
 
-		/// <summary>
-		/// Handles player clicks on the chess board for piece selection and movement
-		/// </summary>
-		private void HandleBoardClick(Vector2 clickPosition)
+		private async Task ProcessNextTurn()
 		{
-			var boardPos = Board.WorldToBoardPosition(Board.ToLocal(clickPosition));
-
-			if (!Board.IsValidPosition(boardPos))
+			if (isProcessingTurn || State == GameState.Checkmate || State == GameState.Stalemate || State == GameState.Draw)
 				return;
 
-			var clickedPiece = Board.GetPieceAt(boardPos);
+			isProcessingTurn = true;
 
-			if (selectedPiece == null)
+			currentPlayer = CurrentTurn == PieceColor.White ? whitePlayer : blackPlayer;
+
+			if (currentPlayer == null)
 			{
-				// Allow selecting any piece that belongs to the current turn (both sides playable)
-				if (clickedPiece != null && clickedPiece.Color == CurrentTurn)
+				GD.PrintErr($"No player controller for {CurrentTurn}");
+				isProcessingTurn = false;
+				return;
+			}
+
+			GD.Print($"Processing turn for {CurrentTurn}");
+			currentPlayer.OnTurnStarted();
+
+			// Get the move from the current player
+			var move = await currentPlayer.GetNextMoveAsync();
+
+			if (move != null)
+			{
+				GD.Print($"Executing move from {move.Value.From} to {move.Value.To}");
+				// Execute the move
+				if (Board.MovePiece(move.Value.From, move.Value.To))
 				{
-					SelectPiece(clickedPiece, boardPos);
+					isProcessingTurn = false; // Reset flag before ending turn
+					EndTurn();
+				}
+				else
+				{
+					GD.PrintErr($"Failed to execute move from {move.Value.From} to {move.Value.To}");
+					isProcessingTurn = false;
 				}
 			}
 			else
 			{
-				// Allow selecting another piece of the current turn
-				if (clickedPiece != null && clickedPiece.Color == CurrentTurn)
-				{
-					SelectPiece(clickedPiece, boardPos);
-				}
-				else
-				{
-					TryMovePiece(boardPos);
-				}
+				GD.Print("No move returned from player");
+				isProcessingTurn = false;
 			}
 		}
 
-		private void SelectPiece(Piece piece, Vector2I position)
+		private async void EndTurn()
 		{
-			selectedPiece = piece;
-			selectedPosition = position;
-			EmitSignal(SignalName.PieceSelected, piece);
+			currentPlayer?.OnTurnEnded();
 
-			HighlightPossibleMoves(piece);
-		}
-
-		private void HighlightPossibleMoves(Piece piece)
-		{
-			Board.HighlightPossibleMoves(piece);
-		}
-
-		private void TryMovePiece(Vector2I targetPosition)
-		{
-			if (Board.MovePiece(selectedPosition, targetPosition))
-			{
-				ClearSelection();
-				EndTurn();
-			}
-		}
-
-		private void ClearSelection()
-		{
-			selectedPiece = null;
-			selectedPosition = new Vector2I(-1, -1);
-			Board.ClearHighlights();
-		}
-
-		private void EndTurn()
-		{
 			CurrentTurn = CurrentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;
 			EmitSignal(SignalName.TurnChanged, (int)CurrentTurn);
 
 			CheckGameState();
+
+			// Continue to next turn if game is still active
+			if (State == GameState.Playing || State == GameState.Check)
+			{
+				await ProcessNextTurn();
+			}
+			else
+			{
+				// Notify players that the game has ended
+				whitePlayer?.OnGameEnded(State);
+				blackPlayer?.OnGameEnded(State);
+			}
 		}
 
 		private void CheckGameState()

@@ -113,9 +113,9 @@ namespace ChessPlusPlus.Core
 		}
 
 		/// <summary>
-		/// Attempts to move a piece from one position to another, validating legality and handling special moves
+		/// Checks if a move is valid without actually executing it
 		/// </summary>
-		public bool MovePiece(Vector2I from, Vector2I to)
+		public bool IsValidMove(Vector2I from, Vector2I to)
 		{
 			var piece = GetPieceAt(from);
 			if (piece == null || !piece.CanMoveTo(to, this))
@@ -123,6 +123,19 @@ namespace ChessPlusPlus.Core
 
 			if (!IsMoveLegal(from, to, piece.Color))
 				return false;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Attempts to move a piece from one position to another, validating legality and handling special moves
+		/// </summary>
+		public bool MovePiece(Vector2I from, Vector2I to)
+		{
+			if (!IsValidMove(from, to))
+				return false;
+
+			var piece = GetPieceAt(from);
 
 			var targetPiece = GetPieceAt(to);
 			if (targetPiece != null)

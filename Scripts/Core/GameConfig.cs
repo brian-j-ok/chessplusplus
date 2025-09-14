@@ -1,13 +1,22 @@
 namespace ChessPlusPlus.Core
 {
 	using ChessPlusPlus.Pieces;
+	using ChessPlusPlus.Players;
 	using Godot;
+
+	public enum GameMode
+	{
+		PlayerVsPlayer,
+		PlayerVsAI,
+		AIVsAI
+	}
 
 	public partial class GameConfig : Resource
 	{
 		[Export] public PieceColor PlayerColor { get; set; } = PieceColor.White;
 		[Export] public bool FlipBoardForBlack { get; set; } = true;
-		[Export] public string GameMode { get; set; } = "Standard";
+		[Export] public GameMode Mode { get; set; } = GameMode.PlayerVsPlayer; // Default to dev mode
+		[Export] public AIDifficulty AIDifficulty { get; set; } = AIDifficulty.Medium;
 
 		private Army? customPlayerArmy = null;
 
@@ -34,7 +43,6 @@ namespace ChessPlusPlus.Core
 		public void SetCustomArmy(Army army)
 		{
 			customPlayerArmy = army;
-			GameMode = "Custom";
 		}
 
 		public Army? GetCustomArmy()
@@ -50,7 +58,6 @@ namespace ChessPlusPlus.Core
 		public void ClearCustomArmy()
 		{
 			customPlayerArmy = null;
-			GameMode = "Standard";
 		}
 	}
 }
