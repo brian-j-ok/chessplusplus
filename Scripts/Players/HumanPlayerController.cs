@@ -45,9 +45,11 @@ namespace ChessPlusPlus.Players
 				return;
 			}
 
-			if (gameManager.CurrentTurn != PlayerColor)
+			if (gameManager.TurnManager.CurrentTurn != PlayerColor)
 			{
-				GD.Print($"Not this player's turn (Current: {gameManager.CurrentTurn}, Player: {PlayerColor})");
+				GD.Print(
+					$"Not this player's turn (Current: {gameManager.TurnManager.CurrentTurn}, Player: {PlayerColor})"
+				);
 				return;
 			}
 

@@ -10,6 +10,8 @@ namespace ChessPlusPlus.UI
 		private Label? blackTimerLabel;
 		private Label? turnIndicatorLabel;
 		private GameManager? gameManager;
+		private ChessPlusPlus.Core.Managers.TimerManager? timerManager;
+		private ChessPlusPlus.Core.Managers.TurnManager? turnManager;
 
 		public override void _Ready()
 		{
@@ -63,12 +65,22 @@ namespace ChessPlusPlus.UI
 			blackTimerLabel.AddThemeColorOverride("font_color", Colors.DarkGray);
 			blackContainer.AddChild(blackTimerLabel);
 
-			// Find and connect to GameManager
+			// Find and connect to GameManager and its managers
 			gameManager = GetNode<GameManager>("/root/Game");
 			if (gameManager != null)
 			{
-				gameManager.TimerUpdated += OnTimerUpdated;
-				gameManager.TurnChanged += (turnInt) => OnTurnChanged((PieceColor)turnInt);
+				timerManager = gameManager.TimerManager;
+				turnManager = gameManager.TurnManager;
+
+				if (timerManager != null)
+				{
+					timerManager.TimerUpdated += OnTimerUpdated;
+				}
+
+				if (turnManager != null)
+				{
+					turnManager.TurnChanged += (turnInt) => OnTurnChanged((PieceColor)turnInt);
+				}
 			}
 		}
 
@@ -117,10 +129,14 @@ namespace ChessPlusPlus.UI
 
 		public override void _ExitTree()
 		{
-			if (gameManager != null)
+			if (timerManager != null)
 			{
-				gameManager.TimerUpdated -= OnTimerUpdated;
-				// Unsubscribe is handled by Godot's lifecycle
+				timerManager.TimerUpdated -= OnTimerUpdated;
+			}
+
+			if (turnManager != null)
+			{
+				// TurnChanged unsubscribe is handled by Godot's lifecycle
 			}
 		}
 	}
