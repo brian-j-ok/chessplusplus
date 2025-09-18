@@ -3,6 +3,7 @@ namespace ChessPlusPlus.Players
 	using System.Collections.Generic;
 	using System.Linq;
 	using System.Threading.Tasks;
+	using ChessPlusPlus.AI;
 	using ChessPlusPlus.Core;
 	using ChessPlusPlus.Pieces;
 	using Godot;
@@ -25,56 +26,37 @@ namespace ChessPlusPlus.Players
 		[Export]
 		public float ThinkingTimeMax { get; set; } = 2.0f;
 
-		private readonly Dictionary<PieceType, int> pieceValues =
-			new()
-			{
-				{ PieceType.Pawn, 100 },
-				{ PieceType.Knight, 320 },
-				{ PieceType.Bishop, 330 },
-				{ PieceType.Rook, 500 },
-				{ PieceType.Queen, 900 },
-				{ PieceType.King, 20000 },
-			};
+		[Export]
+		public bool UseLearning { get; set; } = true;
 
-		private readonly float[,] pawnPositionBonus = new float[8, 8]
-		{
-			{ 0, 0, 0, 0, 0, 0, 0, 0 },
-			{ 50, 50, 50, 50, 50, 50, 50, 50 },
-			{ 10, 10, 20, 30, 30, 20, 10, 10 },
-			{ 5, 5, 10, 25, 25, 10, 5, 5 },
-			{ 0, 0, 0, 20, 20, 0, 0, 0 },
-			{ 5, -5, -10, 0, 0, -10, -5, 5 },
-			{ 5, 10, 10, -20, -20, 10, 10, 5 },
-			{ 0, 0, 0, 0, 0, 0, 0, 0 },
-		};
+		[Export]
+		public int SearchDepth { get; set; } = 3;
 
-		private readonly float[,] knightPositionBonus = new float[8, 8]
-		{
-			{ -50, -40, -30, -30, -30, -30, -40, -50 },
-			{ -40, -20, 0, 0, 0, 0, -20, -40 },
-			{ -30, 0, 10, 15, 15, 10, 0, -30 },
-			{ -30, 5, 15, 20, 20, 15, 5, -30 },
-			{ -30, 0, 15, 20, 20, 15, 0, -30 },
-			{ -30, 5, 10, 15, 15, 10, 5, -30 },
-			{ -40, -20, 0, 5, 5, 0, -20, -40 },
-			{ -50, -40, -30, -30, -30, -30, -40, -50 },
-		};
-
-		private readonly float[,] centerControlBonus = new float[8, 8]
-		{
-			{ -20, -10, -10, -10, -10, -10, -10, -20 },
-			{ -10, 0, 0, 0, 0, 0, 0, -10 },
-			{ -10, 0, 5, 5, 5, 5, 0, -10 },
-			{ -10, 0, 5, 10, 10, 5, 0, -10 },
-			{ -10, 0, 5, 10, 10, 5, 0, -10 },
-			{ -10, 0, 5, 5, 5, 5, 0, -10 },
-			{ -10, 0, 0, 0, 0, 0, 0, -10 },
-			{ -20, -10, -10, -10, -10, -10, -10, -20 },
-		};
+		private IPieceEvaluator evaluator = null!;
+		private string learnedValuesPath = "user://ai_learned_values.json";
 
 		public override void _Ready()
 		{
 			PlayerName = $"AI ({Difficulty})";
+
+			// Initialize the dynamic evaluator
+			evaluator = new DynamicPieceEvaluator();
+			evaluator.SetDifficulty(Difficulty);
+
+			// Load learned values if enabled
+			if (UseLearning && evaluator is DynamicPieceEvaluator dynamicEval)
+			{
+				dynamicEval.LoadLearnedValues(learnedValuesPath);
+			}
+
+			// Adjust search depth based on difficulty
+			SearchDepth = Difficulty switch
+			{
+				AIDifficulty.Easy => 1,
+				AIDifficulty.Medium => 2,
+				AIDifficulty.Hard => 3,
+				_ => 2,
+			};
 		}
 
 		public override async Task<Move?> GetNextMoveAsync()
@@ -101,7 +83,7 @@ namespace ChessPlusPlus.Players
 					bestMove = GetBestMoveSimple(possibleMoves);
 					break;
 				case AIDifficulty.Hard:
-					bestMove = GetBestMoveMinimax(possibleMoves, 3);
+					bestMove = GetBestMoveMinimax(possibleMoves, SearchDepth);
 					break;
 				default:
 					bestMove = possibleMoves[0];
@@ -167,13 +149,22 @@ namespace ChessPlusPlus.Players
 			for (int i = 0; i < moves.Count; i++)
 			{
 				var move = moves[i];
-				move.Score = EvaluateMove(move);
+				move.Score = evaluator.EvaluateMove(move, board);
 				moves[i] = move;
 			}
 
 			var sortedMoves = moves.OrderByDescending(m => m.Score).ToList();
 
-			var topMoves = sortedMoves.Take(3).ToList();
+			// Add some randomness for variety
+			int topMovesCount = Difficulty switch
+			{
+				AIDifficulty.Easy => 5,
+				AIDifficulty.Medium => 3,
+				AIDifficulty.Hard => 2,
+				_ => 3,
+			};
+
+			var topMoves = sortedMoves.Take(Mathf.Min(topMovesCount, sortedMoves.Count)).ToList();
 			return topMoves[GD.RandRange(0, topMoves.Count - 1)];
 		}
 
@@ -199,7 +190,7 @@ namespace ChessPlusPlus.Players
 		{
 			if (depth == 0)
 			{
-				return EvaluateMove(move);
+				return evaluator.EvaluateMove(move, board, SearchDepth - depth);
 			}
 
 			var opponentColor = PlayerColor == PieceColor.White ? PieceColor.Black : PieceColor.White;
@@ -207,7 +198,9 @@ namespace ChessPlusPlus.Players
 
 			if (nextMoves.Count == 0)
 			{
-				return EvaluateMove(move) * (depth + 1);
+				// Check for checkmate or stalemate
+				float endgameBonus = isMaximizing ? -10000 : 10000;
+				return evaluator.EvaluateMove(move, board, SearchDepth - depth) + endgameBonus;
 			}
 
 			if (isMaximizing)
@@ -238,79 +231,19 @@ namespace ChessPlusPlus.Players
 			}
 		}
 
-		private float EvaluateMove(Move move)
+		public void SaveLearnedValues()
 		{
-			float score = 0;
-
-			if (move.CapturedPiece != null)
+			if (UseLearning && evaluator is DynamicPieceEvaluator dynamicEval)
 			{
-				score += pieceValues[move.CapturedPiece.Type];
-			}
-
-			score += GetPositionBonus(move.Piece, move.To);
-
-			if (IsCheckMove(move))
-			{
-				score += 50;
-			}
-
-			if (IsCenterControl(move.To))
-			{
-				score += 30;
-			}
-
-			if (IsPieceDevelopment(move))
-			{
-				score += 20;
-			}
-
-			if (IsCastlingMove(move))
-			{
-				score += 60;
-			}
-
-			return score;
-		}
-
-		private float GetPositionBonus(Piece piece, Vector2I position)
-		{
-			int x = position.X;
-			int y = piece.Color == PieceColor.White ? position.Y : 7 - position.Y;
-
-			switch (piece.Type)
-			{
-				case PieceType.Pawn:
-					return pawnPositionBonus[y, x];
-				case PieceType.Knight:
-					return knightPositionBonus[y, x];
-				default:
-					return centerControlBonus[y, x];
+				dynamicEval.SaveLearnedValues(learnedValuesPath);
 			}
 		}
 
-		private bool IsCheckMove(Move move)
+		public override void _ExitTree()
 		{
-			return false;
-		}
-
-		private bool IsCenterControl(Vector2I position)
-		{
-			return (position.X >= 3 && position.X <= 4) && (position.Y >= 3 && position.Y <= 4);
-		}
-
-		private bool IsPieceDevelopment(Move move)
-		{
-			if (move.Piece.Type == PieceType.Knight || move.Piece.Type == PieceType.Bishop)
-			{
-				int homeRow = move.Piece.Color == PieceColor.White ? 0 : 7;
-				return move.From.Y == homeRow;
-			}
-			return false;
-		}
-
-		private bool IsCastlingMove(Move move)
-		{
-			return move.Piece.Type == PieceType.King && Mathf.Abs(move.To.X - move.From.X) == 2;
+			// Save learned values when AI is destroyed
+			SaveLearnedValues();
+			base._ExitTree();
 		}
 
 		public override void OnTurnStarted()
